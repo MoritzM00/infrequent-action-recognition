@@ -1,0 +1,55 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "infreqact"
+version = "0.0.1"
+description = "Infrequent Action Recognition using MLLMs"
+authors = [
+    { name = "Moritz Mistol", email = "moritz.mistol@gmail.com" },
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+dependencies = []
+
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/infreqact"]
+
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["src/infreqact/__init__.py"]
+target-version = "py311"
+
+[tool.ruff.lint.extend-per-file-ignores]
+# Also ignore `E402` in all `__init__.py` files.
+"__init__.py" = ["E402"]
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+extend-ignore = [
+    "E501",    # dont enforce line too long
+    "D203",    # One blank line before class docstring
+    "D213",    # Multi-line docstring summary should start at the second line
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
