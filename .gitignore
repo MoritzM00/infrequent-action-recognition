@@ -216,5 +216,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 fall-da
-output
+outputs
 models

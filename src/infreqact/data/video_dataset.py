@@ -274,3 +274,9 @@ class OmnifallVideoDataset(GenericVideoDataset):
             f"split='{self.split}', mode='{self.mode}', "
             f"videos={len(self.samples)}, segments={len(self.video_segments)})"
         )
+
+    def transform_frames(self, frames):
+        # just return the images without any transformation
+        return {
+            "video": frames
+        }

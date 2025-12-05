@@ -125,6 +125,9 @@ class GenericVideoDataset(Dataset):
         raise RuntimeError(f"Failed to load a valid video after {self.max_retries} attempts ()")
 
     def transform_frames(self, frames):
+        return {
+            "video": frames
+        }
         # PyTorchVideo transform pipeline
         # CTHW format
         normalize = [Normalize(**self.normalize)] if self.normalize else []

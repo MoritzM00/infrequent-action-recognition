@@ -5,11 +5,8 @@ Usage: python test_omnifall_dataset.py
 
 import logging
 import os
-import sys
-from pathlib import Path
 
-# Add fall-da to path
-sys.path.insert(0, str(Path(__file__).parent))
+from infreqact.visualization import create_image_grid
 
 from infreqact.data.video_dataset import OmnifallVideoDataset, idx2label
 
@@ -28,15 +25,15 @@ def test_omnifall_dataset():
 
     # Dataset parameters
     dataset_config = {
-        "video_root": f"{OMNIFALL_ROOT}/cmdfall/video",
-        "annotations_file": "hf://simplexsigil2/omnifall/labels/cmdfall.csv",
+        "video_root": f"{OMNIFALL_ROOT}/OOPS/video",
+        "annotations_file": "hf://simplexsigil2/omnifall/labels/OOPS.csv",
         "split_root": "hf://simplexsigil2/omnifall/splits",
-        "dataset_name": "cmdfall",
+        "dataset_name": "OOPS",
         "mode": "test",  # Start with test set (smaller)
         "split": "cs",  # Cross-subject split
-        "target_fps": 2.0,  # Low FPS for quick testing
-        "vid_frame_count": None,
-        "data_fps": 20.0,  # CMDFall videos are 20 FPS
+        "target_fps": 8.0,  # Low FPS for quick testing
+        "vid_frame_count": 16,
+        "data_fps": 30.0,  # OOPS videos are 30 FPS
         "ext": ".mp4",
         "fast": True,
     }
@@ -99,6 +96,10 @@ def test_omnifall_dataset():
     try:
         sample = dataset[0]
         print("✓ Sample loaded successfully!")
+        # visualize with grid
+        image = create_image_grid(sample["frame_list"], num_columns=4)
+        image.save(f"outputs/sample_segment_0_grid.jpg")
+
         print(f"\nSample keys: {list(sample.keys())}")
 
         if "pixel_values" in sample:

@@ -7,15 +7,15 @@ from transformers import AutoModelForImageTextToText, AutoProcessor
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
 
 
-def init_qwen_model(attn_implementation="flash_attention_2", cache_dir=".cache"):
-    model_path = "Qwen/Qwen3-VL-2B-Instruct"
+def init_qwen_model(size="2B", attn_implementation="flash_attention_2", cache_dir=".cache"):
+    model_path = f"Qwen/Qwen3-VL-{size}-Instruct"
 
     model = AutoModelForImageTextToText.from_pretrained(
         model_path,
-        torch_dtype="bfloat16",
+        dtype="bfloat16",
         device_map="auto",
         output_loading_info=False,
-        cache_dir=".",
+        cache_dir=cache_dir,
         attn_implementation=attn_implementation,
     )
 
@@ -26,6 +26,8 @@ def init_qwen_model(attn_implementation="flash_attention_2", cache_dir=".cache")
 def inference(
     video,
     prompt,
+    model,
+    processor,
     max_new_tokens=2048,
     total_pixels=20480 * 32 * 32,
     min_pixels=64 * 32 * 32,
@@ -70,12 +72,12 @@ def inference(
             "content": [
                 {
                     "video": video,
-                    "total_pixels": total_pixels,
+                    # "total_pixels": total_pixels,
                     "min_pixels": min_pixels,
                     "max_pixels": max_pixels,
-                    "max_frames": max_frames,
-                    "fps": target_fps,
-                    "sample_fps": sample_fps,
+                    # "max_frames": max_frames,
+                    # "fps": target_fps,
+                    # "sample_fps": sample_fps,
                 },
                 {"type": "text", "text": prompt},
             ],
@@ -121,3 +123,37 @@ def inference(
         generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
     )
     return (output_text[0], inputs) if return_inputs else output_text[0]
+
+
+def prepare_inputs_for_vllm(messages, processor):
+    """
+    Prepare inputs for vLLM.
+    
+    Args:
+        messages: List of messages in standard conversation format
+        processor: AutoProcessor instance
+    
+    Returns:
+        dict: Input format required by vLLM
+    """
+    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    
+    # qwen_vl_utils 0.0.14+ required
+    image_inputs, video_inputs, video_kwargs = process_vision_info(
+        messages,
+        image_patch_size=processor.image_processor.patch_size,
+        return_video_kwargs=True,
+        return_video_metadata=True,
+    )
+    
+    mm_data = {}
+    if image_inputs is not None:
+        mm_data['image'] = image_inputs
+    if video_inputs is not None:
+        mm_data['video'] = video_inputs
+    
+    return {
+        'prompt': text,
+        'multi_modal_data': mm_data,
+        'mm_processor_kwargs': video_kwargs
+    }
