@@ -277,6 +277,4 @@ class OmnifallVideoDataset(GenericVideoDataset):
 
     def transform_frames(self, frames):
         # just return the images without any transformation
-        return {
-            "video": frames
-        }
+        return {"video": frames}

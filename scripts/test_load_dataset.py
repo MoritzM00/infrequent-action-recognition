@@ -6,9 +6,8 @@ Usage: python test_omnifall_dataset.py
 import logging
 import os
 
-from infreqact.visualization import create_image_grid
-
 from infreqact.data.video_dataset import OmnifallVideoDataset, idx2label
+from infreqact.visualization import create_image_grid
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -97,8 +96,8 @@ def test_omnifall_dataset():
         sample = dataset[0]
         print("✓ Sample loaded successfully!")
         # visualize with grid
-        image = create_image_grid(sample["frame_list"], num_columns=4)
-        image.save(f"outputs/sample_segment_0_grid.jpg")
+        image = create_image_grid(sample["video"], num_columns=4)
+        image.save("outputs/sample_segment_0_grid.jpg")
 
         print(f"\nSample keys: {list(sample.keys())}")
 

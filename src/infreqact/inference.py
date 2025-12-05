@@ -128,16 +128,16 @@ def inference(
 def prepare_inputs_for_vllm(messages, processor):
     """
     Prepare inputs for vLLM.
-    
+
     Args:
         messages: List of messages in standard conversation format
         processor: AutoProcessor instance
-    
+
     Returns:
         dict: Input format required by vLLM
     """
     text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    
+
     # qwen_vl_utils 0.0.14+ required
     image_inputs, video_inputs, video_kwargs = process_vision_info(
         messages,
@@ -145,15 +145,11 @@ def prepare_inputs_for_vllm(messages, processor):
         return_video_kwargs=True,
         return_video_metadata=True,
     )
-    
+
     mm_data = {}
     if image_inputs is not None:
-        mm_data['image'] = image_inputs
+        mm_data["image"] = image_inputs
     if video_inputs is not None:
-        mm_data['video'] = video_inputs
-    
-    return {
-        'prompt': text,
-        'multi_modal_data': mm_data,
-        'mm_processor_kwargs': video_kwargs
-    }
+        mm_data["video"] = video_inputs
+
+    return {"prompt": text, "multi_modal_data": mm_data, "mm_processor_kwargs": video_kwargs}

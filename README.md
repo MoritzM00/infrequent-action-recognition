@@ -10,7 +10,7 @@ conda activate colab
 uv pip install vllm --torch-backend=cu129
 uv pip install psutil ninja
 MAX_JOBS=4 uv pip install flash-attn --no-build-isolation
-uv pip install transformers accelerate pandas pillow jupyter json-repair "qwen_vl_utils[decord]" matplotlib
+uv pip install transformers accelerate pandas pillow jupyter json-repair "qwen_vl_utils[decord]" matplotlib torch-c-dlpack-ext
 ```
 4. Optional Dependencies
 ```shell
