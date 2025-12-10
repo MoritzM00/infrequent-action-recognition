@@ -1,13 +1,14 @@
 import time
 import warnings
 
+import json_repair
 from qwen_vl_utils import process_vision_info
 from transformers import AutoModelForImageTextToText, AutoProcessor
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
 
 
-def init_qwen_model(size="2B", attn_implementation="flash_attention_2", cache_dir=".cache"):
+def init_hf_qwen_model(size="2B", attn_implementation="flash_attention_2", cache_dir=".cache"):
     model_path = f"Qwen/Qwen3-VL-{size}-Instruct"
 
     model = AutoModelForImageTextToText.from_pretrained(
@@ -87,7 +88,10 @@ def inference(
 
     start_time_process_vision = time.perf_counter()
     image_inputs, video_inputs, video_kwargs = process_vision_info(
-        [messages], return_video_kwargs=True, image_patch_size=16, return_video_metadata=True
+        [messages],
+        return_video_kwargs=True,
+        image_patch_size=processor.image_processor.patch_size,
+        return_video_metadata=True,
     )
     end_time_process_vision = time.perf_counter()
     print(
@@ -153,3 +157,73 @@ def prepare_inputs_for_vllm(messages, processor):
         mm_data["video"] = video_inputs
 
     return {"prompt": text, "multi_modal_data": mm_data, "mm_processor_kwargs": video_kwargs}
+
+
+def parse_llm_outputs(outputs: list[dict], samples: list[dict], verbose: bool | int = False):
+    """
+    Parse LLM outputs and extract predicted labels.
+
+    Args:
+        outputs: List of LLM output objects containing generated text
+        samples: List of ground truth samples with labels
+        verbose: Controls output printing:
+            - False/0: No printing
+            - True: Print first 10 samples
+            - int > 0: Print first N samples
+
+    Returns:
+        tuple: (predictions dict, predicted_labels list, true_labels list)
+    """
+    # Extract predicted labels from LLM outputs
+    predicted_labels = []
+    true_labels = []
+
+    # Determine how many samples to print
+    if verbose is False or verbose == 0:
+        n_print = 0
+    elif verbose is True:
+        n_print = 10
+    else:
+        n_print = int(verbose)
+
+    predictions = {}
+    for i, (output, sample) in enumerate(zip(outputs, samples)):
+        generated_text = output.outputs[0].text
+
+        # Print output if within verbosity limit
+        should_print = i < n_print
+        if should_print:
+            print()
+            print("=" * 40)
+            print(f"Sample {i + 1}/{len(outputs)}")
+
+        true_labels.append(sample["label_str"])
+        try:
+            json_obj = json_repair.loads(generated_text)
+            predicted_label = json_obj.get("label", "other")  # Default to 'other' if missing
+
+            if should_print:
+                print(f"JSON output: {json_obj}")
+                print(f"  predicted label: {predicted_label}")
+                print(f"  true label: {sample['label_str']}")
+
+            predicted_labels.append(predicted_label)
+
+            prediction = sample.copy()
+            prediction["predicted_label"] = predicted_labels[-1]
+            prediction["reasoning"] = json_obj.get("reasoning", "")
+            predictions[f"sample_{i}"] = prediction
+        except Exception as e:
+            if should_print:
+                print(f"  Error parsing JSON: {e}")
+                print(f"  Raw generated text: {generated_text!r}")
+            # Default to 'other' for failed parses
+            predicted_labels.append("other")
+
+    # Print summary if verbosity is enabled but there are more samples
+    if n_print > 0 and len(outputs) > n_print:
+        print()
+        print("=" * 40)
+        print(f"... {len(outputs) - n_print} more samples (use verbose={len(outputs)} to see all)")
+
+    return predictions, predicted_labels, true_labels
