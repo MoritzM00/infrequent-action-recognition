@@ -3,8 +3,36 @@ import textwrap
 from PIL import Image
 
 
-def get_system_prompt():
-    prompt = textwrap.dedent("""
+def get_system_prompt(cot=False):
+    """
+    Generate system prompt for Human Activity Recognition.
+
+    Args:
+        cot: If True, include chain-of-thought reasoning in the output.
+             If False, only output the label.
+
+    Returns:
+        str: Formatted system prompt
+    """
+    if cot:
+        output_format = textwrap.dedent("""
+            Output Format:
+            Return a JSON object:
+            {
+              "reasoning": "Brief analysis of intent, movement type, and objects.",
+              "label": "<class_label>"
+            }
+        """).strip()
+    else:
+        output_format = textwrap.dedent("""
+            Output Format:
+            Return a JSON object:
+            {
+              "label": "<class_label>"
+            }
+        """).strip()
+
+    prompt = textwrap.dedent(f"""
         Role:
         You are an expert Human Activity Recognition (HAR) specialist. Analyze the video clip to classify the action or posture of the main subject.
 
@@ -25,21 +53,27 @@ def get_system_prompt():
         * Moment of Rest: If a person transitions Sit -> Lie without pausing, use only the destination label.
         * Fall Termination: fall ends when inertia stops. fallen begins only when the person is on the ground in a resting state.
 
-        Output Format:
-        Return a JSON object:
-        {
-          "reasoning": "Brief analysis of intent, movement type, and objects.",
-          "label": "<class_label>"
-        }
+        {output_format}
     """).strip()  # .strip() removes the very first and last newlines caused by the triple quotes
 
     return prompt
 
 
 def build_prompts(
-    dataset, n_samples=5
+    dataset, n_samples=5, cot=False
 ):  # loads the omnifall test set and creates prompts with video samples
-    prompt = get_system_prompt()
+    """
+    Build prompts for video classification.
+
+    Args:
+        dataset: Dataset to sample from
+        n_samples: Number of samples to process
+        cot: If True, request chain-of-thought reasoning in outputs
+
+    Returns:
+        tuple: (messages, samples)
+    """
+    prompt = get_system_prompt(cot=cot)
     messages = []
     samples = []
     for i in range(n_samples):
