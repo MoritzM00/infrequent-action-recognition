@@ -99,6 +99,62 @@ def build_prompts(
     return messages, samples
 
 
+def build_prompt_for_sample(sample, cot=False):
+    """
+    Build a single prompt message for one sample.
+
+    Args:
+        sample: Dictionary containing video frames and metadata
+        cot: If True, request chain-of-thought reasoning
+
+    Returns:
+        tuple: (message dict, sample metadata dict)
+    """
+    prompt = get_system_prompt(cot=cot)
+
+    # Extract video without modifying the original sample
+    video_sample = sample["video"]  # list of frames (numpy arrays)
+    sample_metadata = {k: v for k, v in sample.items() if k != "video"}
+
+    # Convert to PIL images
+    video_sample = [Image.fromarray(frame) for frame in video_sample]
+
+    message = {
+        "role": "user",
+        "content": [
+            {
+                "type": "video",
+                "video": video_sample,
+            },
+            {"type": "text", "text": prompt},
+        ],
+    }
+
+    return message, sample_metadata
+
+
+def collate_fn(batch, cot=False):
+    """
+    Collate function for DataLoader to process batches of samples.
+
+    Args:
+        batch: List of samples from the dataset
+        cot: If True, request chain-of-thought reasoning
+
+    Returns:
+        tuple: (list of messages, list of sample metadata)
+    """
+    messages = []
+    samples = []
+
+    for sample in batch:
+        message, sample_metadata = build_prompt_for_sample(sample, cot=cot)
+        messages.append(message)
+        samples.append(sample_metadata)
+
+    return messages, samples
+
+
 def run_inference():
     pass
 

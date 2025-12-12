@@ -1,26 +1,57 @@
 import os
+from functools import partial
 
 import torch
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 from transformers import AutoProcessor
 from vllm import LLM, SamplingParams
 
 from infreqact.data.utils import load_test_omnifall_dataset
 from infreqact.inference.base import parse_llm_outputs, prepare_inputs_for_vllm
-from infreqact.inference.zeroshot import build_prompts
+from infreqact.inference.zeroshot import collate_fn
 from infreqact.metrics.base import compute_metrics
 
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 
 
-def main():
+def main(batch_size=32, num_workers=8, num_samples=None, cot=False, verbose=5):
+    """
+    Run inference on Omnifall dataset using vLLM with batched processing.
+
+    Args:
+        batch_size: Number of samples to process in each batch
+        num_workers: Number of workers for DataLoader
+        num_samples: Number of samples to process (None for full dataset)
+        cot: If True, request chain-of-thought reasoning
+        verbose: Verbosity level for output printing
+    """
     dataset = load_test_omnifall_dataset()
+
+    # Limit dataset size if specified
+    if num_samples is not None:
+        from torch.utils.data import Subset
+
+        dataset = Subset(dataset, range(min(num_samples, len(dataset))))
+
+    print(
+        f"Processing {len(dataset)} samples with batch_size={batch_size}, num_workers={num_workers}"
+    )
+    print(f"Chain-of-thought: {cot}")
 
     checkpoint_path = "Qwen/Qwen3-VL-4B-Instruct"
     processor = AutoProcessor.from_pretrained(checkpoint_path)
 
-    # TODO: parallelize this, with DataLoader?
-    messages, samples = build_prompts(n_samples=200, dataset=dataset)
-    inputs = [prepare_inputs_for_vllm([message], processor) for message in messages]
+    # Create DataLoader with custom collate function
+    collate_fn_with_cot = partial(collate_fn, cot=cot)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        collate_fn=collate_fn_with_cot,
+        shuffle=False,
+        pin_memory=True,
+    )
 
     llm = LLM(
         model=checkpoint_path,
@@ -31,8 +62,6 @@ def main():
         dtype=torch.bfloat16,
         gpu_memory_utilization=0.9,
         mm_processor_kwargs={"min_pixels": 16 * 32 * 32, "max_pixels": 400 * 32 * 32},
-        # max_num_batched_tokens=2048,
-        # max_num_seqs=1,  # Process one video at a time
     )
 
     sampling_params = SamplingParams(
@@ -42,10 +71,26 @@ def main():
         stop_token_ids=[],
     )
 
-    # TODO: iterate in batches (with message processing above)
-    outputs = llm.generate(inputs, sampling_params=sampling_params)
+    # Process in batches
+    all_outputs = []
+    all_samples = []
 
-    predictions, predicted_labels, true_labels = parse_llm_outputs(outputs, samples, verbose=5)
+    print("\nGenerating predictions...")
+    for batch_messages, batch_samples in tqdm(dataloader, desc="Processing batches"):
+        # Prepare inputs for vLLM
+        batch_inputs = [prepare_inputs_for_vllm([msg], processor) for msg in batch_messages]
+
+        # Generate predictions for this batch
+        batch_outputs = llm.generate(batch_inputs, sampling_params=sampling_params)
+
+        all_outputs.extend(batch_outputs)
+        all_samples.extend(batch_samples)
+
+    print(f"\nGenerated {len(all_outputs)} predictions")
+
+    predictions, predicted_labels, true_labels = parse_llm_outputs(
+        all_outputs, all_samples, verbose=verbose
+    )
 
     with open("outputs/vllm_inference_predictions.json", "w") as f:
         import json
@@ -100,4 +145,25 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run vLLM inference on Omnifall dataset")
+    parser.add_argument("--batch-size", type=int, default=8, help="Batch size for processing")
+    parser.add_argument("--num-workers", type=int, default=4, help="Number of DataLoader workers")
+    parser.add_argument(
+        "--num-samples", type=int, default=None, help="Number of samples to process (default: all)"
+    )
+    parser.add_argument("--cot", action="store_true", help="Enable chain-of-thought reasoning")
+    parser.add_argument(
+        "--verbose", type=int, default=5, help="Number of samples to print (0 for none)"
+    )
+
+    args = parser.parse_args()
+
+    main(
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        num_samples=args.num_samples,
+        cot=args.cot,
+        verbose=args.verbose,
+    )
