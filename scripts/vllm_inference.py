@@ -40,6 +40,7 @@ def main(cfg: DictConfig):
         console_level=logging.INFO,
         file_level=logging.DEBUG,
     )
+
     # Resolve all OmegaConf interpolations once at the beginning
     cfg = OmegaConf.to_container(cfg, resolve=True)
     cfg = OmegaConf.create(cfg)  # Convert back to DictConfig for dot notation access
@@ -47,12 +48,11 @@ def main(cfg: DictConfig):
     logger.info("Configuration:")
     logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
 
-    # Load dataset using get_video_datasets
-    logger.info(f"Loading dataset: {cfg.dataset.name}")
-
-    # Create a temporary config structure compatible with get_video_datasets
-    # We need to create dataset_test attribute for the factory
-    temp_cfg = OmegaConf.create({"dataset_test": cfg.dataset})
+    # Create config structure compatible with get_video_datasets
+    # Wrap dataset config as dataset_test for the factory
+    temp_cfg = OmegaConf.create(
+        {"dataset_test": cfg.dataset, "model_fps": cfg.model_fps, "num_frames": cfg.num_frames}
+    )
 
     dataset = get_video_datasets(
         cfg=temp_cfg,

@@ -7,8 +7,8 @@ video_datasets:
     split_root: "hf://simplexsigil2/omnifall/splits"
 
 # Common parameters
-target_fps: ${model.model_fps}
-vid_frame_count: ${model.num_frames}
+target_fps: ${model_fps}
+vid_frame_count: ${num_frames}
 num_classes: 16
 path_format: "{video_root}/{video_path}{ext}"
 
