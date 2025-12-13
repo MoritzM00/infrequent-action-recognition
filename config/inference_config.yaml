@@ -24,6 +24,13 @@ save_metrics: true
 num_samples: null  # null = all samples
 verbose: 5  # Number of samples to print
 
+# Weights & Biases configuration
+wandb:
+  mode: online  # online, offline, or disabled
+  project: "fall-detection-using-mllms"
+  name:
+  tags:
+
 # Hydra configuration
 hydra:
   job:

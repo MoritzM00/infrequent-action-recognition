@@ -19,3 +19,8 @@ num_workers: 0  # Single-threaded for easier debugging
 # speed up vllm
 vllm:
   tensor_parallel_size: 1
+
+# Disable W&B for debugging (offline mode)
+wandb:
+  project: "fall-detection-testing"
+  mode: online  # or offline, online, disabled

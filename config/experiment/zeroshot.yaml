@@ -12,5 +12,11 @@ cot: false  # No chain-of-thought for baseline
 model:
   params: "4B"  # Use 4B model for zero-shot
 
+# W&B tracking
+wandb:
+  project: "fall-detection-zeroshot"
+  name: "qwen-4b-oops-zeroshot"
+  tags: ["zeroshot", "qwen", "oops"]
+
 # Output settings
 output_dir: "outputs/zeroshot"

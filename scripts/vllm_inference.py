@@ -13,6 +13,7 @@ from tqdm import tqdm
 from transformers import AutoProcessor
 from vllm import LLM, SamplingParams
 
+import wandb
 from infreqact.data.video_dataset_factory import get_video_datasets
 from infreqact.evaluation import evaluate_predictions
 from infreqact.evaluation.visual import visualize_evaluation_results
@@ -22,6 +23,28 @@ from infreqact.utils.logging import setup_logging
 
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
 logger = logging.getLogger(__name__)
+
+
+def cleanup_vllm(llm):
+    """Properly cleanup vLLM resources to avoid NCCL warnings."""
+    try:
+        # Destroy the LLM engine
+        if hasattr(llm, "llm_engine"):
+            del llm.llm_engine
+        del llm
+
+        # Force garbage collection
+        import gc
+
+        gc.collect()
+
+        # Clear CUDA cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
+
+    except Exception as e:
+        logger.warning(f"Error during vLLM cleanup: {e}")
 
 
 def main(cfg: DictConfig):
@@ -49,6 +72,17 @@ def main(cfg: DictConfig):
     logger.info("Configuration:")
     logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
 
+    # Initialize Weights & Biases
+    wandb_mode = cfg.get("wandb", {}).get("mode", "online")
+    logger.info(f"Initializing W&B in {wandb_mode} mode")
+    run = wandb.init(
+        project=cfg.get("wandb", {}).get("project", "vllm-inference"),
+        name=cfg.get("wandb", {}).get("name", None),
+        tags=cfg.get("wandb", {}).get("tags", []),
+        config=OmegaConf.to_container(cfg, resolve=True),
+        mode=wandb_mode,
+    )
+
     # Create config structure compatible with get_video_datasets
     # Wrap dataset config as dataset_test for the factory
     temp_cfg = OmegaConf.create(
@@ -58,7 +92,7 @@ def main(cfg: DictConfig):
     dataset = get_video_datasets(
         cfg=temp_cfg,
         mode=cfg.dataset.get("mode", "test"),
-        run=None,
+        run=run,
         return_individual=False,
         split=cfg.dataset.get("split", "cs"),
     )
@@ -143,15 +177,16 @@ def main(cfg: DictConfig):
         all_outputs, all_samples, verbose=cfg.get("verbose", 5)
     )
 
+    # Create filename components for reuse
+    model_name = cfg.model.name.replace("/", "_").replace(".", "_")
+    dataset_name = cfg.dataset.name.replace("-", "_")
+    cot_suffix = "_cot" if cfg.cot else ""
+
     # Save predictions if enabled
+    predictions_file = None
     if cfg.get("save_predictions", True):
         predictions_dir = Path(cfg.output_dir) / "predictions"
         predictions_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create filename based on model and dataset
-        model_name = cfg.model.name.replace("/", "_").replace(".", "_")
-        dataset_name = cfg.dataset.name.replace("-", "_")
-        cot_suffix = "_cot" if cfg.cot else ""
 
         predictions_file = (
             predictions_dir / f"{model_name}_{dataset_name}_predictions{cot_suffix}.json"
@@ -178,6 +213,35 @@ def main(cfg: DictConfig):
 
     # Print formatted results
     visualize_evaluation_results(metrics)
+
+    # Log to W&B
+    wandb.log(metrics)
+
+    # Log predictions as artifact
+    if predictions_file is not None:
+        artifact = wandb.Artifact(
+            name=f"{model_name}_{dataset_name}_predictions",
+            type="predictions",
+            description=f"Predictions for {model_name} on {dataset_name}",
+        )
+        artifact.add_file(str(predictions_file))
+        run.log_artifact(artifact)
+
+    # Log metrics file as artifact
+    if cfg.get("save_metrics", True) and metrics_dir:
+        # Find the most recent metrics file
+        metrics_files = list(metrics_dir.glob(f"{model_name}_{dataset_name}_*.json"))
+        if metrics_files:
+            latest_metrics = max(metrics_files, key=lambda p: p.stat().st_mtime)
+            artifact = wandb.Artifact(
+                name=f"{model_name}_{dataset_name}_metrics",
+                type="metrics",
+                description=f"Evaluation metrics for {model_name} on {dataset_name}",
+            )
+            artifact.add_file(str(latest_metrics))
+            run.log_artifact(artifact)
+
+    logger.info(f"Logged results to W&B: {run.url}")
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="inference_config")
