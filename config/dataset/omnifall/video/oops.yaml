@@ -1,0 +1,18 @@
+name: "video-dataset-oops"
+video_datasets:
+    # Annotation and split files can be specified as:
+    # - HuggingFace dataset: "hf://datasets/{repo_id}/config={config_name}"
+    # - Local path with env vars: "${oc.env:WANFALL_ROOT}/labels/wanfall.csv"
+    # - Absolute path: "/path/to/labels/wanfall.csv"
+
+  - name: "OOPS"
+    video_root: "${oc.env:OMNIFALL_ROOT}/OOPS/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/OOPS.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+# Common parameters
+target_fps: ${model.model_fps}
+vid_frame_count: ${model.num_frames}
+num_classes: 16
+path_format: "{video_root}/{video_path}{ext}"

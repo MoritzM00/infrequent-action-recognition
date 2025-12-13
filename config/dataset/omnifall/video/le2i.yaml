@@ -1,0 +1,13 @@
+name: "video-dataset-le2i"
+video_datasets:
+  - name: "le2i"
+    video_root: "${oc.env:OMNIFALL_ROOT}/le2i/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/le2i.csv"
+    dataset_fps: 25.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+# Common parameters
+target_fps: ${model.model_fps}
+vid_frame_count: ${model.num_frames}
+num_classes: 16
+path_format: "{video_root}/{video_path}{ext}"

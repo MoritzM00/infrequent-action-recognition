@@ -1,0 +1,18 @@
+name: "wanfall-i3d-cross-bmi"
+feature_datasets:
+  - name: "wanfall"
+    feature_root: "${oc.env:WANFALL_ROOT}/features/i3d"
+    annotations_file: "hf://simplexsigil2/wanfall/labels/wanfall.csv"
+    feature_fps: 16.0
+    frames_per_feature: 1
+    feature_stride: 0.0625
+    feature_centered: true
+    feature_type: "i3d"
+    split_root: "hf://simplexsigil2/wanfall/splits/cross_bmi"
+
+num_features: 18  # Number of consecutive features to use as input sequence
+tokens_per_feature: 1
+feature_dim: 2048  # I3D feature dimension
+
+feature_ext: ".h5"
+num_classes: 16

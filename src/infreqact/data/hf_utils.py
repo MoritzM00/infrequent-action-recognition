@@ -4,6 +4,7 @@ Utilities for working with HuggingFace datasets in the context of video datasets
 
 import logging
 import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -78,10 +79,10 @@ def resolve_annotations_file(annotations_path: str) -> str:
             raise
 
     # Handle local paths with environment variable expansion
-    expanded_path = os.path.expandvars(annotations_path)
+    expanded_path = Path(os.path.expandvars(annotations_path))
 
     # Verify the file exists
-    if not os.path.exists(expanded_path):
+    if not expanded_path.exists():
         raise FileNotFoundError(
             f"Annotations file not found: {expanded_path} (original: {annotations_path})"
         )
@@ -173,22 +174,22 @@ def resolve_split_file(
             raise
 
     # Handle local paths
-    expanded_path = os.path.expandvars(split_path)
+    expanded_path = Path(os.path.expandvars(split_path))
 
     # Check if it's already a complete file path
-    if expanded_path.endswith(".csv"):
+    if expanded_path.suffix == ".csv":
         split_file = expanded_path
     else:
         # Construct full path based on dataset structure
         if split_type and dataset_name:
-            split_file = os.path.join(expanded_path, split_type, dataset_name, f"{mode}.csv")
+            split_file = expanded_path / split_type / dataset_name / f"{mode}.csv"
         elif dataset_name:
-            split_file = os.path.join(expanded_path, dataset_name, f"{mode}.csv")
+            split_file = expanded_path / dataset_name / f"{mode}.csv"
         else:
-            split_file = os.path.join(expanded_path, f"{mode}.csv")
+            split_file = expanded_path / f"{mode}.csv"
 
     # Verify the file exists
-    if not os.path.exists(split_file):
+    if not split_file.exists():
         raise FileNotFoundError(f"Split file not found: {split_file} (original: {split_path})")
 
-    return split_file
+    return str(split_file)

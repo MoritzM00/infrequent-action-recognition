@@ -1,0 +1,197 @@
+name: "all-splits"
+video_datasets:
+    # This config includes all datasets with multiple splits for comprehensive testing:
+    # - Omnifall datasets: cs (cross-subject) + cv (cross-view)
+    # - OOPS: cs only
+    # - WanFall: rand, cross_age (ca), cross_ethnicity (ce), cross_bmi (cbmi)
+    #
+    # Evaluation groups created:
+    # - omnifall_cs, omnifall_cv, oops, wanfall_rand, wanfall_ca, wanfall_ce, wanfall_cbmi
+
+  # ========== Omnifall CS Split (8 datasets) ==========
+  - name: "cmdfall"
+    evaluation_group: "omnifall_cs"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/cmdfall/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/cmdfall.csv"
+    dataset_fps: 20.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "up_fall"
+    evaluation_group: "omnifall_cs"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/up_fall/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/up_fall.csv"
+    dataset_fps: 18.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "le2i"
+    evaluation_group: "omnifall_cs"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/le2i/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/le2i.csv"
+    dataset_fps: 25.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "gmdcsa24"
+    evaluation_group: "omnifall_cs"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/GMDCSA24/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/GMDCSA24.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "edf"
+    evaluation_group: "omnifall_cs"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/edf/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/edf.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "occu"
+    evaluation_group: "omnifall_cs"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/occu/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/occu.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "caucafall"
+    evaluation_group: "omnifall_cs"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/caucafall/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/caucafall.csv"
+    dataset_fps: 20.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "mcfd"
+    evaluation_group: "omnifall_cs"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/mcfd/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/mcfd.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  # ========== Omnifall CV Split (8 datasets) ==========
+  - name: "cmdfall"
+    evaluation_group: "omnifall_cv"
+    split: "cv"
+    video_root: "${oc.env:OMNIFALL_ROOT}/cmdfall/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/cmdfall.csv"
+    dataset_fps: 20.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "up_fall"
+    evaluation_group: "omnifall_cv"
+    split: "cv"
+    video_root: "${oc.env:OMNIFALL_ROOT}/up_fall/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/up_fall.csv"
+    dataset_fps: 18.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "le2i"
+    evaluation_group: "omnifall_cv"
+    split: "cv"
+    video_root: "${oc.env:OMNIFALL_ROOT}/le2i/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/le2i.csv"
+    dataset_fps: 25.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "gmdcsa24"
+    evaluation_group: "omnifall_cv"
+    split: "cv"
+    video_root: "${oc.env:OMNIFALL_ROOT}/GMDCSA24/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/GMDCSA24.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "edf"
+    evaluation_group: "omnifall_cv"
+    split: "cv"
+    video_root: "${oc.env:OMNIFALL_ROOT}/edf/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/edf.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "occu"
+    evaluation_group: "omnifall_cv"
+    split: "cv"
+    video_root: "${oc.env:OMNIFALL_ROOT}/occu/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/occu.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "caucafall"
+    evaluation_group: "omnifall_cv"
+    split: "cv"
+    video_root: "${oc.env:OMNIFALL_ROOT}/caucafall/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/caucafall.csv"
+    dataset_fps: 20.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "mcfd"
+    evaluation_group: "omnifall_cv"
+    split: "cv"
+    video_root: "${oc.env:OMNIFALL_ROOT}/mcfd/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/mcfd.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  # ========== OOPS Dataset (cs split only) ==========
+  # No evaluation_group - will be evaluated as individual dataset
+  - name: "OOPS"
+    split: "cs"
+    video_root: "${oc.env:OMNIFALL_ROOT}/OOPS/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/OOPS.csv"
+    dataset_fps: 30.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  # ========== WanFall - Random Split ==========
+  # No evaluation_group - will be evaluated as individual dataset
+  - name: "wanfall"
+    split: "rand"
+    video_root: "${oc.env:WANFALL_ROOT}/video"
+    annotations_file: "hf://simplexsigil2/wanfall/labels/wanfall.csv"
+    dataset_fps: 16.0
+    split_root: "hf://simplexsigil2/wanfall/splits/random"
+
+  # ========== WanFall - Cross-Age Split ==========
+  # No evaluation_group - will be evaluated as individual dataset
+  - name: "wanfall"
+    split: "ca"
+    video_root: "${oc.env:WANFALL_ROOT}/video"
+    annotations_file: "hf://simplexsigil2/wanfall/labels/wanfall.csv"
+    dataset_fps: 16.0
+    split_root: "hf://datasets/simplexsigil2/wanfall/config=cross_age"
+
+  # ========== WanFall - Cross-Ethnicity Split ==========
+  # No evaluation_group - will be evaluated as individual dataset
+  - name: "wanfall"
+    split: "ce"
+    video_root: "${oc.env:WANFALL_ROOT}/video"
+    annotations_file: "hf://simplexsigil2/wanfall/labels/wanfall.csv"
+    dataset_fps: 16.0
+    split_root: "hf://datasets/simplexsigil2/wanfall/config=cross_ethnicity"
+
+  # ========== WanFall - Cross-BMI Split ==========
+  # No evaluation_group - will be evaluated as individual dataset
+  - name: "wanfall"
+    split: "cbmi"
+    video_root: "${oc.env:WANFALL_ROOT}/video"
+    annotations_file: "hf://simplexsigil2/wanfall/labels/wanfall.csv"
+    dataset_fps: 16.0
+    split_root: "hf://datasets/simplexsigil2/wanfall/config=cross_bmi"
+
+# Common parameters
+target_fps: ${model.model_fps}
+vid_frame_count: ${model.num_frames}
+num_classes: 16
+path_format: "{video_root}/{video_path}{ext}"
+
+# Evaluation settings
+# Use omnifall_cs as the primary metric (most comparable to literature)
+metric_for_best_model: "eval_omnifall_cs_combined_balanced_accuracy"
+
+# Don't create all_combined - we want separate evaluation groups
+create_all_combined: false

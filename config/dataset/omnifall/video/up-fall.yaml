@@ -1,0 +1,13 @@
+name: "video-dataset-up-fall"
+video_datasets:
+  - name: "up_fall"
+    video_root: "${oc.env:OMNIFALL_ROOT}/up_fall/video"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/up_fall.csv"
+    dataset_fps: 18.0
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+# Common parameters
+target_fps: ${model.model_fps}
+vid_frame_count: ${model.num_frames}
+num_classes: 16
+path_format: "{video_root}/{video_path}{ext}"

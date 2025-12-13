@@ -1,0 +1,23 @@
+name: "video-dataset-wanfall"
+video_datasets:
+    # Annotation and split files can be specified as:
+    # - HuggingFace dataset: "hf://datasets/{repo_id}/config={config_name}"
+    # - Local path with env vars: "${oc.env:WANFALL_ROOT}/labels/wanfall.csv"
+    # - Absolute path: "/path/to/labels/wanfall.csv"
+  - name: "wanfall"
+    video_root: "${oc.env:WANFALL_ROOT}/video"
+    annotations_file: "hf://simplexsigil2/wanfall/labels/wanfall.csv"
+    dataset_fps: 16.0
+    split_root: "hf://simplexsigil2/wanfall/splits/cross_ethnicity"
+
+# Common parameters
+target_fps: ${model.model_fps}
+vid_frame_count: ${model.num_frames}
+num_classes: 16
+path_format: "{video_root}/{video_path}{ext}"
+
+# Evaluation settings
+metric_for_best_model: "eval_balanced_accuracy"
+create_all_combined: false
+
+split: "cross_ethnicity"

@@ -1,87 +1,124 @@
 import json
 import logging
 import os
-
-from infreqact.evaluation.visual import visualize_evaluation_results
-from infreqact.utils.logging import setup_logging
-
-# Configure logging before importing heavy libraries
-console, rich_handler, file_handler = setup_logging(
-    log_file="logs/local_logs.log",
-    console_level=logging.INFO,
-    file_level=logging.DEBUG,
-)
-logger = logging.getLogger(__name__)
-
 from functools import partial
+from pathlib import Path
 
+import hydra
 import torch
+from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from transformers import AutoProcessor
 from vllm import LLM, SamplingParams
 
-from infreqact.data.utils import load_test_omnifall_dataset
+from infreqact.data.video_dataset_factory import get_video_datasets
 from infreqact.evaluation import evaluate_predictions
+from infreqact.evaluation.visual import visualize_evaluation_results
 from infreqact.inference.base import parse_llm_outputs, prepare_inputs_for_vllm
 from infreqact.inference.zeroshot import collate_fn
+from infreqact.utils.logging import setup_logging
 
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+logger = logging.getLogger(__name__)
 
 
-def main(batch_size=32, num_workers=8, num_samples=None, cot=False, verbose=5):
+def main(cfg: DictConfig):
     """
-    Run inference on Omnifall dataset using vLLM with batched processing.
+    Run inference on video dataset using vLLM with batched processing.
 
     Args:
-        batch_size: Number of samples to process in each batch
-        num_workers: Number of workers for DataLoader
-        num_samples: Number of samples to process (None for full dataset)
-        cot: If True, request chain-of-thought reasoning
-        verbose: Verbosity level for output printing
+        cfg: Hydra configuration containing:
+            - model: Model configuration (checkpoint, vllm settings, sampling params)
+            - dataset: Dataset configuration (video paths, annotations, etc.)
+            - inference: Inference settings (batch_size, num_workers, cot)
+            - num_samples: Number of samples to process (None for full dataset)
+            - verbose: Verbosity level for output printing
     """
-    dataset = load_test_omnifall_dataset()
+    console, rich_handler, file_handler = setup_logging(
+        log_file="logs/local_logs.log",
+        console_level=logging.INFO,
+        file_level=logging.DEBUG,
+    )
+    # Resolve all OmegaConf interpolations once at the beginning
+    cfg = OmegaConf.to_container(cfg, resolve=True)
+    cfg = OmegaConf.create(cfg)  # Convert back to DictConfig for dot notation access
+
+    logger.info("Configuration:")
+    logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
+
+    # Load dataset using get_video_datasets
+    logger.info(f"Loading dataset: {cfg.dataset.name}")
+
+    # Create a temporary config structure compatible with get_video_datasets
+    # We need to create dataset_test attribute for the factory
+    temp_cfg = OmegaConf.create({"dataset_test": cfg.dataset})
+
+    dataset = get_video_datasets(
+        cfg=temp_cfg,
+        mode=cfg.dataset.get("mode", "test"),
+        run=None,
+        return_individual=False,
+        split=cfg.dataset.get("split", "cs"),
+    )
 
     # Limit dataset size if specified
-    if num_samples is not None:
-        dataset = Subset(dataset, range(min(num_samples, len(dataset))))
+    if cfg.get("num_samples") is not None:
+        dataset = Subset(dataset, range(min(cfg.num_samples, len(dataset))))
 
     logger.info(
-        f"Processing {len(dataset)} samples with batch_size={batch_size}, num_workers={num_workers}"
+        f"Processing {len(dataset)} samples with batch_size={cfg.inference.batch_size}, "
+        f"num_workers={cfg.inference.num_workers}"
     )
-    logger.info(f"Chain-of-thought: {cot}")
+    logger.info(f"Chain-of-thought: {cfg.inference.cot}")
 
-    checkpoint_path = "Qwen/Qwen3-VL-8B-Instruct"
+    checkpoint_path = cfg.model.checkpoint_path
+    model_name = cfg.model.name
     logger.info(f"Loading model and processor: {checkpoint_path}")
+    logger.info(f"Model name: {model_name}")
     processor = AutoProcessor.from_pretrained(checkpoint_path)
 
     # Create DataLoader with custom collate function
-    collate_fn_with_cot = partial(collate_fn, cot=cot)
+    collate_fn_with_cot = partial(collate_fn, cot=cfg.inference.cot)
     dataloader = DataLoader(
         dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
+        batch_size=cfg.inference.batch_size,
+        num_workers=cfg.inference.num_workers,
         collate_fn=collate_fn_with_cot,
         shuffle=False,
         pin_memory=True,
     )
 
-    llm = LLM(
-        model=checkpoint_path,
-        tensor_parallel_size=2,
-        mm_encoder_tp_mode="data",
-        mm_processor_cache_gb=0,
-        seed=0,
-        dtype=torch.bfloat16,
-        gpu_memory_utilization=0.9,
-        mm_processor_kwargs={"min_pixels": 16 * 32 * 32, "max_pixels": 400 * 32 * 32},
-    )
+    # Auto-determine tensor_parallel_size (null -> use all)
+    tensor_parallel_size = cfg.vllm.tensor_parallel_size
+    if tensor_parallel_size is None:
+        tensor_parallel_size = torch.cuda.device_count()
+        logger.info(f"Auto-detected tensor_parallel_size: {tensor_parallel_size} (using all GPUs)")
+
+    # Initialize vLLM model with config parameters
+    vllm_kwargs = {
+        "model": checkpoint_path,
+        "tensor_parallel_size": tensor_parallel_size,
+        "mm_encoder_tp_mode": cfg.vllm.mm_encoder_tp_mode,
+        "mm_processor_cache_gb": cfg.vllm.mm_processor_cache_gb,
+        "seed": cfg.vllm.seed,
+        "dtype": getattr(torch, cfg.vllm.dtype),
+        "gpu_memory_utilization": cfg.vllm.gpu_memory_utilization,
+        "mm_processor_kwargs": cfg.vllm.mm_processor_kwargs,
+    }
+
+    # Add enable_expert_parallel only if it's set to True (for MoE models)
+    if cfg.vllm.get("enable_expert_parallel", False):
+        vllm_kwargs["enable_expert_parallel"] = True
+        logger.info("Enabling expert parallelism for MoE model")
+
+    llm = LLM(**vllm_kwargs)
 
     sampling_params = SamplingParams(
-        temperature=0,
-        max_tokens=512,
-        top_k=-1,
-        stop_token_ids=[],
+        temperature=cfg.sampling.temperature,
+        max_tokens=cfg.sampling.max_tokens,
+        top_k=cfg.sampling.top_k,
+        stop_token_ids=cfg.sampling.stop_token_ids,
     )
 
     # Process in batches
@@ -102,50 +139,51 @@ def main(batch_size=32, num_workers=8, num_samples=None, cot=False, verbose=5):
     logger.info(f"Generated {len(all_outputs)} predictions")
 
     predictions, predicted_labels, true_labels = parse_llm_outputs(
-        all_outputs, all_samples, verbose=verbose
+        all_outputs, all_samples, verbose=cfg.get("verbose", 5)
     )
 
-    predictions_file = "outputs/vllm_inference_predictions.json"
-    with open(predictions_file, "w") as f:
-        json.dump(predictions, f, indent=4)
-    logger.info(f"Saved predictions to {predictions_file}")
+    # Save predictions if enabled
+    if cfg.get("save_predictions", True):
+        predictions_dir = Path(cfg.output_dir) / "predictions"
+        predictions_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create filename based on model and dataset
+        model_name = cfg.model.name.replace("/", "_").replace(".", "_")
+        dataset_name = cfg.dataset.name.replace("-", "_")
+        cot_suffix = "_cot" if cfg.inference.cot else ""
+
+        predictions_file = (
+            predictions_dir / f"{model_name}_{dataset_name}_predictions{cot_suffix}.json"
+        )
+        with open(predictions_file, "w") as f:
+            json.dump(predictions, f, indent=4)
+        logger.info(f"Saved predictions to {predictions_file}")
 
     # Compute comprehensive metrics
     logger.info("=" * 80)
     logger.info("EVALUATION METRICS")
     logger.info("=" * 80)
 
+    # Create metrics subdirectory
+    metrics_dir = Path(cfg.output_dir) / "metrics" if cfg.get("save_metrics", True) else None
+
     metrics = evaluate_predictions(
         predictions=predicted_labels,
         references=true_labels,
-        dataset_name="vllm_inference",
-        output_dir="outputs",
-        save_results=True,
+        dataset_name=f"{model_name}_{dataset_name}",
+        output_dir=str(metrics_dir) if metrics_dir else None,
+        save_results=cfg.get("save_metrics", True),
     )
 
     # Print formatted results
     visualize_evaluation_results(metrics)
 
 
+@hydra.main(version_base=None, config_path="../config", config_name="inference_config")
+def hydra_main(cfg: DictConfig):
+    """Hydra entry point for the inference script."""
+    main(cfg)
+
+
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Run vLLM inference on Omnifall dataset")
-    parser.add_argument("--batch-size", type=int, default=32, help="Batch size for processing")
-    parser.add_argument("--num-workers", type=int, default=8, help="Number of DataLoader workers")
-    parser.add_argument(
-        "--num-samples", type=int, default=None, help="Number of samples to process (default: all)"
-    )
-    parser.add_argument("--cot", action="store_true", help="Enable chain-of-thought reasoning")
-    parser.add_argument(
-        "--verbose", type=int, default=5, help="Number of samples to print (0 for none)"
-    )
-    args = parser.parse_args()
-
-    main(
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        num_samples=args.num_samples,
-        cot=args.cot,
-        verbose=args.verbose,
-    )
+    hydra_main()

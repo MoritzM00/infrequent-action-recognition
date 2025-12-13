@@ -1,0 +1,10 @@
+# Qwen Instruct models
+
+# Model identification
+version: "3"
+variant: "Instruct"
+params: "4B"
+
+# Computed paths
+name: "Qwen${model.version}-VL-${model.params}-${model.variant}"
+checkpoint_path: "Qwen/${model.name}"

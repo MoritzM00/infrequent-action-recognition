@@ -6,8 +6,9 @@ from collections import OrderedDict
 import pandas as pd
 import torch
 
-from .dataset import GenericVideoDataset, idx2label
+from .dataset import GenericVideoDataset
 from .hf_utils import resolve_annotations_file, resolve_split_file
+from .video_dataset import idx2label
 
 
 class WanfallVideoDataset(GenericVideoDataset):

@@ -6,8 +6,8 @@ without requiring HuggingFace Trainer or Accelerator dependencies.
 
 import json
 import logging
-import os
 import time
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -46,11 +46,10 @@ def evaluate_predictions(
     if save_results:
         if output_dir is None:
             output_dir = "outputs"
-        os.makedirs(output_dir, exist_ok=True)
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
 
-        metrics_file = os.path.join(
-            output_dir, f"{dataset_name}_metrics_{time.strftime('%Y%m%d-%H%M%S')}.json"
-        )
+        metrics_file = output_path / f"{dataset_name}_metrics_{time.strftime('%Y%m%d-%H%M%S')}.json"
         with open(metrics_file, "w") as f:
             json.dump(metrics, f, indent=4)
         logger.info(f"Saved metrics to {metrics_file}")
@@ -83,8 +82,9 @@ def save_predictions(
     if additional_data is not None:
         data.update(additional_data)
 
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
-    with open(output_file, "w") as f:
+    output_path = Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
         json.dump(data, f, indent=4)
 
     logger.info(f"Saved predictions to {output_file}")

@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from infreqact.data.video_dataset import OmnifallVideoDataset
 
@@ -10,8 +11,9 @@ def load_test_omnifall_dataset():
     if not OMNIFALL_ROOT:
         raise ValueError("OMNIFALL_ROOT environment variable not set")
 
+    omnifall_path = Path(OMNIFALL_ROOT)
     dataset_config = {
-        "video_root": f"{OMNIFALL_ROOT}/OOPS/video",
+        "video_root": str(omnifall_path / "OOPS" / "video"),
         "annotations_file": "hf://simplexsigil2/omnifall/labels/OOPS.csv",
         "split_root": "hf://simplexsigil2/omnifall/splits",
         "dataset_name": "OOPS",

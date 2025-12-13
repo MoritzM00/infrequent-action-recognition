@@ -1,0 +1,18 @@
+name: "feature-dataset-oops"
+feature_datasets:
+  - name: "OOPS"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/OOPS/features/i3d"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/OOPS.csv"
+    feature_fps: 30.0
+    frames_per_feature: 16
+    feature_stride: 0.033333333
+    feature_centered: true
+    feature_type: "i3d"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+num_features: 18  # Number of consecutive features to use
+tokens_per_feature: 1
+feature_dim: 2048  # Dimension of input features
+
+feature_ext: ".h5"
+num_classes: 10

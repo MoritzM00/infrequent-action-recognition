@@ -1,0 +1,18 @@
+name: "wanfall-videomae-kinetics-rand"
+feature_datasets:
+  - name: "wanfall"
+    feature_root: "${oc.env:WANFALL_ROOT}/features/videomae-kinetics-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/wanfall/labels/wanfall.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-kinetics-7d5fps-1f"
+    split_root: "hf://simplexsigil2/wanfall/splits/random"
+
+num_features: 9  # Number of consecutive features to use
+tokens_per_feature: 1
+feature_dim: 768  # VideoMAE feature dimension
+
+feature_ext: ".h5"
+num_classes: 16

@@ -1,6 +1,6 @@
 import json
-import os
 import time
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -76,10 +76,12 @@ def evaluate_with_subgroups(
         if save_results and subgroup_metrics:
             if output_dir is None:
                 output_dir = "outputs"
-            os.makedirs(output_dir, exist_ok=True)
+            output_path = Path(output_dir)
+            output_path.mkdir(parents=True, exist_ok=True)
 
-            subgroup_file = os.path.join(
-                output_dir, f"{dataset_name}_subgroup_metrics_{time.strftime('%Y%m%d-%H%M%S')}.json"
+            subgroup_file = (
+                output_path
+                / f"{dataset_name}_subgroup_metrics_{time.strftime('%Y%m%d-%H%M%S')}.json"
             )
             with open(subgroup_file, "w") as f:
                 json.dump(subgroup_metrics, f, indent=4)

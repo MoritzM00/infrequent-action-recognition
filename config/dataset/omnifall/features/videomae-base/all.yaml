@@ -1,0 +1,98 @@
+name: "feature-dataset-all"
+feature_datasets:
+  - name: "cmdfall"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/cmdfall/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/cmdfall.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "up_fall"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/up_fall/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/up_fall.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "le2i"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/le2i/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/le2i.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "gmdcsa24"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/GMDCSA24/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/GMDCSA24.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "edf"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/edf/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/edf.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "occu"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/occu/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/occu.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "caucafall"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/caucafall/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/caucafall.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "mcfd"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/mcfd/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/mcfd.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+  - name: "OOPS"
+    feature_root: "${oc.env:OMNIFALL_ROOT}/OOPS/features/videomae-base-7d5fps-1f"
+    annotations_file: "hf://simplexsigil2/omnifall/labels/OOPS.csv"
+    feature_fps: 7.5
+    frames_per_feature: 16
+    feature_stride: 0.133333333
+    feature_centered: false
+    feature_type: "videomae-base-7d5fps-1f"
+    split_root: "hf://simplexsigil2/omnifall/splits"
+
+num_features: 18  # Number of consecutive features to use
+tokens_per_feature: 1
+feature_dim: 768  # Dimension of input features
+
+feature_ext: ".h5"
+num_classes: 10

@@ -1,0 +1,21 @@
+defaults:
+  - vllm: default
+  - sampling: greedy
+  - model: qwen/instruct
+  - dataset: omnifall
+  - inference: default
+  - _self_
+
+# Output configuration
+output_dir: "outputs"
+save_predictions: true
+save_metrics: true
+
+# Inference settings
+num_samples: null  # null = all samples
+verbose: 5  # Number of samples to print
+
+# Hydra configuration
+hydra:
+  job:
+    chdir: false  # Keep working directory for inference
