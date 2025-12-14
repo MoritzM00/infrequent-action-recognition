@@ -7,6 +7,7 @@ from pathlib import Path
 
 import hydra
 import torch
+import torch.multiprocessing as mp
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
@@ -68,7 +69,7 @@ def main(cfg: DictConfig):
     for dataset_name, dataset in multi_dataset["individual"].items():
         # TODO: support multiple datasets in vLLM inference
         # we probably need to loop over datasets and aggregate predictions for metrics computation
-        if len(dataset["individual"]) > 1:
+        if len(multi_dataset["individual"]) > 1:
             logger.warning(
                 "vLLM inference currently supports only a single dataset. "
                 f"Found multiple datasets: {list(multi_dataset['individual'].keys())}. "
@@ -229,4 +230,12 @@ def hydra_main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
+    # Set start method before any CUDA/DataLoader usage
+    try:
+        mp.set_start_method("spawn", force=True)
+        logger.info("Set multiprocessing start method to 'spawn'.")
+    except RuntimeError as e:
+        # Might have already been set by Accelerate/torchrun
+        logger.warning(f"Could not set multiprocessing start method (might be already set): {e}")
+
     hydra_main()
