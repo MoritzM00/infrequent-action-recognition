@@ -7,7 +7,7 @@ dtype: "bfloat16"
 gpu_memory_utilization: 0.9
 mm_processor_kwargs:
   min_pixels: 16384   # 16 * 32 * 32
-  max_pixels: 409600  # 400 * 32 * 32
+  max_pixels: 512000  # 500 * 32 * 32
 
 # Optional overrides for special cases
 enable_expert_parallel: false  # Set to true for MoE models
