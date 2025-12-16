@@ -2,9 +2,17 @@ import json
 import logging
 import os
 import sys
+import time
 from functools import partial
 from pathlib import Path
 
+from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
+
+console, rich_handler, file_handler = setup_logging(
+    log_file="logs/local_logs.log",
+    console_level=logging.INFO,
+    file_level=logging.DEBUG,
+)
 import hydra
 import torch
 import torch.multiprocessing as mp
@@ -20,7 +28,6 @@ from infreqact.data.video_dataset_factory import get_video_datasets
 from infreqact.evaluation import evaluate_predictions
 from infreqact.inference.base import parse_llm_outputs, prepare_inputs_for_vllm
 from infreqact.inference.zeroshot import collate_fn
-from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
 from infreqact.utils.wandb import initialize_run_from_config
 
 os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
@@ -39,11 +46,6 @@ def main(cfg: DictConfig):
             - num_samples: Number of samples to process (None for full dataset)
             - verbose: Verbosity level for output printing
     """
-    console, rich_handler, file_handler = setup_logging(
-        log_file="logs/local_logs.log",
-        console_level=logging.INFO,
-        file_level=logging.DEBUG,
-    )
 
     # Resolve all OmegaConf interpolations once at the beginning
     OmegaConf.resolve(cfg)
@@ -88,12 +90,11 @@ def main(cfg: DictConfig):
     logger.info(f"Chain-of-thought: {cfg.cot}")
 
     checkpoint_path = cfg.model.checkpoint_path
-    model_name = cfg.model.name
     logger.info(f"Loading model and processor: {checkpoint_path}")
     processor = AutoProcessor.from_pretrained(checkpoint_path)
 
     # Create DataLoader with custom collate function
-    collate_fn_with_cot = partial(collate_fn, cot=cfg.cot)
+    collate_fn_with_cot = partial(collate_fn, cot=cfg.cot, model_fps=cfg.model_fps)
     dataloader = DataLoader(
         dataset,
         batch_size=cfg.batch_size,
@@ -140,24 +141,23 @@ def main(cfg: DictConfig):
     all_samples = []
 
     logger.info("Generating predictions...")
+    start = time.perf_counter()
     for batch_messages, batch_samples in tqdm(dataloader, desc="Processing batches"):
-        # Prepare inputs for vLLM
         batch_inputs = [prepare_inputs_for_vllm([msg], processor) for msg in batch_messages]
-
-        # Generate predictions for this batch
         batch_outputs = llm.generate(batch_inputs, sampling_params=sampling_params)
 
         all_outputs.extend(batch_outputs)
         all_samples.extend(batch_samples)
 
-    logger.info(f"Generated {len(all_outputs)} predictions")
+    end = time.perf_counter()
+    logger.info(f"Inference completed in {end - start:.2f} seconds")
+    run.summary["inference_time_seconds"] = end - start
 
     predictions, predicted_labels, true_labels = parse_llm_outputs(
         all_outputs, all_samples, label2idx
     )
-
-    # Create filename components for reuse
-    cot_suffix = "_cot" if cfg.cot else ""
+    logger.info(f"Unique predicted labels: {set(predicted_labels)}")
+    logger.info(f"Unique true labels: {set(true_labels)}")
 
     # Save predictions if enabled
     predictions_file = None
@@ -165,17 +165,13 @@ def main(cfg: DictConfig):
         predictions_dir = Path(cfg.output_dir) / "predictions"
         predictions_dir.mkdir(parents=True, exist_ok=True)
 
+        cot_suffix = "_cot" if cfg.cot else ""
         predictions_file = (
             predictions_dir / f"{cfg.model.name}_{dataset_name}_predictions{cot_suffix}.json"
         )
         with open(predictions_file, "w") as f:
             json.dump(predictions, f, indent=4)
         logger.info(f"Saved predictions to {predictions_file}")
-
-    # Compute comprehensive metrics
-    logger.info("=" * 80)
-    logger.info("EVALUATION METRICS")
-    logger.info("=" * 80)
 
     # Create metrics subdirectory
     metrics_dir = Path(cfg.output_dir) / "metrics" if cfg.get("save_metrics", True) else None
@@ -189,30 +185,6 @@ def main(cfg: DictConfig):
         save_results=cfg.get("save_metrics", True),
         run=run,
     )
-
-    # Log predictions as artifact
-    if predictions_file is not None:
-        artifact = wandb.Artifact(
-            name=f"{model_name}_{dataset_name}_predictions",
-            type="predictions",
-            description=f"Predictions for {model_name} on {dataset_name}",
-        )
-        artifact.add_file(str(predictions_file))
-        run.log_artifact(artifact)
-
-    # Log metrics file as artifact
-    if cfg.get("save_metrics", True) and metrics_dir:
-        # Find the most recent metrics file
-        metrics_files = list(metrics_dir.glob(f"{model_name}_{dataset_name}_*.json"))
-        if metrics_files:
-            latest_metrics = max(metrics_files, key=lambda p: p.stat().st_mtime)
-            artifact = wandb.Artifact(
-                name=f"{model_name}_{dataset_name}_metrics",
-                type="metrics",
-                description=f"Evaluation metrics for {model_name} on {dataset_name}",
-            )
-            artifact.add_file(str(latest_metrics))
-            run.log_artifact(artifact)
 
     logger.info(f"Logged results to W&B: {run.url}")
     wandb.finish()
