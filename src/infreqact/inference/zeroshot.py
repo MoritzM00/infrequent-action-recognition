@@ -100,13 +100,18 @@ def build_prompts(dataset, n_samples=5, cot=False):
     return messages, samples
 
 
-def build_prompt_for_sample(sample, cot=False, model_fps=8):
+def build_prompt_for_sample(
+    sample, cot=False, model_fps=8, min_pixels=16 * 32 * 32, max_pixels=512 * 32 * 32
+):
     """
     Build a single prompt message for one sample.
 
     Args:
         sample: Dictionary containing video frames and metadata
         cot: If True, request chain-of-thought reasoning
+        model_fps: Frame rate to indicate to the model
+        min_pixels: Minimum total pixels for frame resizing
+        max_pixels: Maximum total pixels for frame resizing
 
     Returns:
         tuple: (message dict, sample metadata dict)
@@ -129,6 +134,8 @@ def build_prompt_for_sample(sample, cot=False, model_fps=8):
                 "type": "video",
                 "video": video_sample,
                 "sample_fps": model_fps,
+                "min_pixels": min_pixels,
+                "max_pixels": max_pixels,
             },
             {"type": "text", "text": prompt},
         ],
@@ -137,13 +144,13 @@ def build_prompt_for_sample(sample, cot=False, model_fps=8):
     return message, sample_metadata
 
 
-def collate_fn(batch, cot=False, model_fps=8):
+def collate_fn(batch, **kwargs):
     """
     Collate function for DataLoader to process batches of samples.
 
     Args:
         batch: List of samples from the dataset
-        cot: If True, request chain-of-thought reasoning
+        **kwargs: Additional arguments for prompt building
 
     Returns:
         tuple: (list of messages, list of sample metadata)
@@ -152,7 +159,7 @@ def collate_fn(batch, cot=False, model_fps=8):
     samples = []
 
     for sample in batch:
-        message, sample_metadata = build_prompt_for_sample(sample, cot=cot, model_fps=model_fps)
+        message, sample_metadata = build_prompt_for_sample(sample, **kwargs)
         messages.append(message)
         samples.append(sample_metadata)
 

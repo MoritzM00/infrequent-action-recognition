@@ -8,11 +8,15 @@ from pathlib import Path
 
 from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
 
+# setup logging before importing any heavy libraries
 console, rich_handler, file_handler = setup_logging(
     log_file="logs/local_logs.log",
     console_level=logging.INFO,
     file_level=logging.DEBUG,
 )
+os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+os.environ["VLLM_CONFIGURE_LOGGING"] = "0"
+
 import hydra
 import torch
 import torch.multiprocessing as mp
@@ -29,9 +33,6 @@ from infreqact.evaluation import evaluate_predictions
 from infreqact.inference.base import parse_llm_outputs, prepare_inputs_for_vllm
 from infreqact.inference.zeroshot import collate_fn
 from infreqact.utils.wandb import initialize_run_from_config
-
-os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-os.environ["VLLM_CONFIGURE_LOGGING"] = "0"
 
 logger = logging.getLogger(__name__)
 
@@ -96,12 +97,18 @@ def main(cfg: DictConfig):
     processor = AutoProcessor.from_pretrained(checkpoint_path)
 
     # Create DataLoader with custom collate function
-    collate_fn_with_cot = partial(collate_fn, cot=cfg.cot, model_fps=cfg.model_fps)
+    collate_fn_with_kwargs = partial(
+        collate_fn,
+        cot=cfg.cot,
+        model_fps=cfg.model_fps,
+        min_pixels=cfg.model.min_pixels,
+        max_pixels=cfg.model.max_pixels,
+    )
     dataloader = DataLoader(
         dataset,
         batch_size=cfg.batch_size,
         num_workers=cfg.num_workers,
-        collate_fn=collate_fn_with_cot,
+        collate_fn=collate_fn_with_kwargs,
         shuffle=False,
         pin_memory=True,
     )

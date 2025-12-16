@@ -6,6 +6,11 @@ defaults:
   - _self_
   - experiment: debug
 
+# defaults for the qwen models
+model:
+  min_pixels: 16384   # 16 * 32 * 32
+  max_pixels: 204800 # 200 * 32 * 32,
+
 # Global video processing parameters
 model_fps: 8.0  # Target frame rate for video sampling
 num_frames: 16  # Number of frames to extract per video
