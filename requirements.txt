@@ -4,6 +4,7 @@ jupyter==1.1.1
 matplotlib==3.10.7
 pandas==2.3.3
 qwen-vl-utils==0.0.14
+keye-vl-utils==1.5.2
 scikit-learn==1.8.0
 torch==2.9.0+cu129
 torch-c-dlpack-ext==0.1.3
