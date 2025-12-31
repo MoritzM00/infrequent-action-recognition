@@ -3,7 +3,7 @@
 2. Run
 ```shell
 conda env create -f environment.yml
-conda activate colab
+conda activate cuda-129
 ```
 3. Install additional dependencies using uv (installed inside colab environment)
 ```shell
