@@ -1,5 +1,3 @@
-# vLLM configuration with sensible defaults
-# tensor_parallel_size is set automatically based on model size in the script
 mm_encoder_tp_mode: "data"
 mm_processor_cache_gb: 0
 seed: 0
@@ -7,8 +5,10 @@ dtype: "bfloat16"
 gpu_memory_utilization: 0.9
 mm_processor_kwargs:
   do_resize: false
+limit_mm_per_prompt:
+  image: 0
+  video: 1
 
-# Optional overrides for special cases
 enable_expert_parallel: false  # Set to true for MoE models
 
 tensor_parallel_size: null # use all GPUs by default

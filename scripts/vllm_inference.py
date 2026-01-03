@@ -114,9 +114,7 @@ def main(cfg: DictConfig):
     )
 
     # Auto-determine tensor_parallel_size (null -> use all)
-    tensor_parallel_size = cfg.vllm.tensor_parallel_size
-    if tensor_parallel_size is None:
-        tensor_parallel_size = torch.cuda.device_count()
+    tensor_parallel_size = cfg.vllm.tensor_parallel_size or torch.cuda.device_count()
     logger.info(f"Using tensor_parallel_size={tensor_parallel_size}")
 
     # Initialize vLLM model with config parameters
@@ -129,12 +127,9 @@ def main(cfg: DictConfig):
         "dtype": getattr(torch, cfg.vllm.dtype),
         "gpu_memory_utilization": cfg.vllm.gpu_memory_utilization,
         "mm_processor_kwargs": cfg.vllm.mm_processor_kwargs,
+        "enable_expert_parallel": cfg.vllm.enable_expert_parallel,
+        "limit_mm_per_prompt": cfg.vllm.limit_mm_per_prompt,
     }
-
-    # Add enable_expert_parallel only if it's set to True (for MoE models)
-    if cfg.vllm.get("enable_expert_parallel", False):
-        vllm_kwargs["enable_expert_parallel"] = True
-        logger.info("Enabling expert parallelism for MoE model")
 
     llm = LLM(**vllm_kwargs)
 
