@@ -6,24 +6,14 @@ import time
 from functools import partial
 from pathlib import Path
 
-from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
-
-# setup logging before importing any heavy libraries
-console, rich_handler, file_handler = setup_logging(
-    log_file="logs/local_logs.log",
-    console_level=logging.INFO,
-    file_level=logging.DEBUG,
-)
-os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-os.environ["VLLM_CONFIGURE_LOGGING"] = "0"
-
 import hydra
 import torch
-import torch.multiprocessing as mp
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from transformers import AutoProcessor
+
+from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
 
 # vLLM imports are done conditionally inside main() based on cfg.vllm.use_mock
 # This allows switching between real and mock vLLM without code changes
@@ -73,10 +63,8 @@ def main(cfg: DictConfig):
             MockSamplingParams as SamplingParams,
         )
 
-        logger.info("=" * 80)
-        logger.info("MOCK MODE ENABLED - Using Mock vLLM for debugging")
-        logger.info("No GPU required, random predictions will be generated")
-        logger.info("=" * 80)
+        logger.warning("MOCK MODE ENABLED - Using Mock vLLM for debugging")
+
     else:
         from vllm import LLM, SamplingParams
 
@@ -141,7 +129,6 @@ def main(cfg: DictConfig):
     tensor_parallel_size = cfg.vllm.tensor_parallel_size or torch.cuda.device_count()
     logger.info(f"Using tensor_parallel_size={tensor_parallel_size}")
 
-    # Initialize vLLM model with config parameters
     vllm_kwargs = {
         "model": checkpoint_path,
         "tensor_parallel_size": tensor_parallel_size,
@@ -224,10 +211,23 @@ def main(cfg: DictConfig):
     logger.info(f"Logged results to W&B: {run.url}")
     wandb.finish()
 
+    if tensor_parallel_size > 1:
+        from vllm.distributed import destroy_distributed_environment
+
+        destroy_distributed_environment()
+
 
 @hydra.main(version_base=None, config_path="../config", config_name="inference_config")
 def hydra_main(cfg: DictConfig):
     """Hydra entry point for the inference script."""
+    global console, rich_handler, file_handler
+    console, rich_handler, file_handler = setup_logging(
+        log_file="logs/local_logs.log",
+        console_level=logging.INFO,
+        file_level=logging.DEBUG,
+    )
+    os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+    os.environ["VLLM_CONFIGURE_LOGGING"] = "0"
     try:
         main(cfg)
     except Exception as e:
@@ -237,12 +237,4 @@ def hydra_main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
-    # Set start method before any CUDA/DataLoader usage
-    try:
-        mp.set_start_method("spawn", force=True)
-        logger.info("Set multiprocessing start method to 'spawn'.")
-    except RuntimeError as e:
-        # Might have already been set by Accelerate/torchrun
-        logger.warning(f"Could not set multiprocessing start method (might be already set): {e}")
-
     hydra_main()
