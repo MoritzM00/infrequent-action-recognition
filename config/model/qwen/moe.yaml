@@ -14,3 +14,6 @@ checkpoint_path: "${model.family}/${model.name}"
 # Override vLLM settings for MoE
 vllm:
   enable_expert_parallel: true
+
+
+needs_video_metadata: true

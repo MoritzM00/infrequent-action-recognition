@@ -51,10 +51,9 @@ class OmnifallVideoDataset(GenericVideoDataset):
         data_fps=None,
         path_format="{video_root}/{video_path}{ext}",
         max_retries=10,
-        image_processor=None,
-        normalize=dict(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         fast=True,
         ext=".mp4",
+        size=None,
         **kwargs,
     ):
         """
@@ -72,15 +71,25 @@ class OmnifallVideoDataset(GenericVideoDataset):
             data_fps: Original FPS of the videos (if known)
             path_format: Format string for video paths
             max_retries: Maximum retries for loading a video
-            image_processor: Image processor for frame transformation
-            normalize: Normalization parameters
             fast: Whether to use fast video loading
         """
+        super().__init__(
+            video_root=video_root,
+            annotations_file=annotations_file,
+            target_fps=target_fps,
+            vid_frame_count=vid_frame_count,
+            data_fps=data_fps,
+            path_format=path_format,
+            max_retries=max_retries,
+            mode=mode,
+            fast=fast,
+        )
         self.dataset_name = dataset_name
         self.split = split
         self.mode = mode
         self.split_root = split_root
         self.ext = ext
+        self.size = size
 
         logging.info(
             f"Initializing {self.dataset_name} dataset in {self.mode} mode with split {self.split}"
@@ -106,57 +115,11 @@ class OmnifallVideoDataset(GenericVideoDataset):
                 for p in paths:
                     self.samples[p] = {"id": p}
 
-        # Initialize parent class (but we'll override the annotations loading)
-        self.video_root = video_root
-        self.target_fps = target_fps
-        self.vid_frame_count = vid_frame_count
-        self.data_fps = data_fps
-        self.path_format = path_format
-        self.max_retries = max_retries
-        self.image_processor = image_processor
-        self.normalize = normalize
-        self.mode = mode
-        self.fast = fast
-
         # Load temporal segmentation labels
         self._load_temporal_labels(annotations_file)
 
-        # Initialize GenericVideoDataset attributes without calling __init__
-        # (to avoid loading annotations twice)
-        self.load_video = (
-            self.load_video_fast if fast and vid_frame_count is not None else self.load_video_slow
-        )
-
-        # Import necessary methods from parent class
-        from infreqact.data.dataset import GenericVideoDataset
-
-        self.load_video_fast = GenericVideoDataset.load_video_fast.__get__(self)
-        self.load_video_slow = GenericVideoDataset.load_video_slow.__get__(self)
-        self.transform_frames = GenericVideoDataset.transform_frames.__get__(self)
-
-        # Initialize image processor if not provided
-        if self.image_processor is None:
-            from transformers import AutoImageProcessor
-
-            self.image_processor = AutoImageProcessor.from_pretrained(
-                "MCG-NJU/videomae-small-finetuned-kinetics"
-            )
-
-        self.image_processor.image_mean = (normalize or {}).get("mean", [0.485, 0.456, 0.406])
-        self.image_processor.image_std = (normalize or {}).get("std", [0.229, 0.224, 0.225])
-
-        # Initialize transforms (from parent class)
-        from infreqact.data.transforms.fourier import PhaseOnly
-        from infreqact.data.transforms.tube_masking import TubeMasker
-
-        self.fourier_trans = PhaseOnly(in_arrangement="t c h w")
-        input_size = (8, 14, 14)  # Patches in (T, H, W)
-        mask_ratio = 0.9  # Ratio of patches to mask
-        self.tube_masker = TubeMasker(input_size, mask_ratio)
-
         # Set paths to segment indices
         self.paths = list(range(len(self.video_segments)))
-        self.annotations = {}  # Not used in our case
 
     def _load_temporal_labels(self, annotations_file):
         """Load temporal segmentation labels from CSV and create segment index."""
@@ -274,7 +237,3 @@ class OmnifallVideoDataset(GenericVideoDataset):
             f"split='{self.split}', mode='{self.mode}', "
             f"videos={len(self.samples)}, segments={len(self.video_segments)})"
         )
-
-    def transform_frames(self, frames):
-        # just return the images without any transformation
-        return {"video": frames}

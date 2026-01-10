@@ -50,7 +50,7 @@ extend-ignore = [
 ]
 
 [tool.ruff.lint.pydocstyle]
-convention = "numpy"
+convention = "google"
 
 [tool.pytest.ini_options]
 addopts = "-ra"

@@ -164,11 +164,3 @@ def collate_fn(batch, **kwargs):
         samples.append(sample_metadata)
 
     return messages, samples
-
-
-def run_inference():
-    pass
-
-
-def evaluate_predictions():
-    pass

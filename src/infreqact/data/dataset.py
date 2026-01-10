@@ -6,21 +6,8 @@ import time
 import av
 import numpy as np
 import torch
-from einops import rearrange as rea
+import torchvision.transforms.functional as F
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose
-from transformers import AutoImageProcessor
-
-from infreqact.data.transforms.fourier import PhaseOnly
-from infreqact.data.transforms.transforms_factory import (
-    RandomCrop,
-    RandomShortSideScale,
-    ToTensorVideo,
-)
-from infreqact.data.transforms.transforms_file import (
-    Normalize,
-)
-from infreqact.data.transforms.tube_masking import TubeMasker
 
 
 class GenericVideoDataset(Dataset):
@@ -33,39 +20,26 @@ class GenericVideoDataset(Dataset):
         data_fps=None,
         path_format="{video_root}/{filename}.mp4",
         max_retries=10,
-        image_processor=None,
-        # Normalize with kinetics-400 mean/std by default
-        normalize=dict(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         mode="train",
         fast=True,
+        size=None,
     ):
         self.video_root = video_root
         self.slow_video_file = annotations_file.replace(".csv", "_slow.csv")
-        self.load_annotations(annotations_file)
         self.target_fps = target_fps
         self.vid_frame_count = vid_frame_count
         self.data_fps = data_fps
         self.path_format = path_format
         self.max_retries = max_retries
-        self.image_processor = (
-            AutoImageProcessor.from_pretrained("MCG-NJU/videomae-small-finetuned-kinetics")
-            if image_processor is None
-            else image_processor
-        )
-        self.image_processor.image_mean = (normalize or {}).get("mean", [0.485, 0.456, 0.406])
-        self.image_processor.image_std = (normalize or {}).get("std", [0.229, 0.224, 0.225])
         self.mode = mode
-        self.normalize = normalize
         self.load_video = (
             self.load_video_fast if fast and vid_frame_count is not None else self.load_video_slow
         )
-
-        self.fourier_trans = PhaseOnly(in_arrangement="t c h w")
-        input_size = (8, 14, 14)  # Patches in (T, H, W)
-        mask_ratio = 0.9  # Ratio of patches to mask
-        self.tube_masker = TubeMasker(input_size, mask_ratio)
+        self.annotations = {}
+        self.size = size
 
     def load_annotations(self, annotations_file):
+        # call manually after init if needed
         annotations = {}
         with open(annotations_file) as file:
             reader = csv.reader(file)
@@ -107,7 +81,6 @@ class GenericVideoDataset(Dataset):
 
     def __getitem__(self, idx):
         retries = 0
-        exception = None
         while retries < self.max_retries:
             try:
                 return self.load_item(idx)
@@ -125,41 +98,15 @@ class GenericVideoDataset(Dataset):
         raise RuntimeError(f"Failed to load a valid video after {self.max_retries} attempts ()")
 
     def transform_frames(self, frames):
+        # frames is a list of ndarrays (H, W, C)
+        # Stack and convert to tensor: (T, H, W, C) -> (T, C, H, W)
+        frames = torch.from_numpy(np.stack(frames)).permute(0, 3, 1, 2).float()
+
+        if self.size is not None:
+            # size is (height, width)
+            frames = F.resize(frames, self.size)
+
         return {"video": frames}
-        # PyTorchVideo transform pipeline
-        # CTHW format
-        normalize = [Normalize(**self.normalize)] if self.normalize else []
-        transform = Compose(
-            [  # (T, H, W, C)
-                ToTensorVideo(),  # (T, H, W, C) -> (C, T, H, W)
-                RandomShortSideScale(min_size=256, max_size=320),  #
-                RandomCrop((224, 224)),  # Random crop to 224x224
-            ]
-            + normalize
-        )
-
-        # Convert frames to tensor
-        frames = np.stack(frames)
-
-        if self.mode == "val" or self.mode == "test":
-            inputs = self.image_processor(list(frames), return_tensors="pt")
-            inputs["pixel_values"] = rea(inputs["pixel_values"], "b t c h w -> (b t) c h w")
-        else:
-            # Convert frames to tensor
-            frames = np.stack(frames)  # Shape: (T, H, W, C)
-            frames = transform(torch.tensor(frames))  # Apply augmentations
-            frames = frames.permute(1, 0, 2, 3)  # Rearrange to (T, C, H, W)
-            inputs = {"pixel_values": frames}
-
-        do_fourier = False
-        if do_fourier:
-            inputs = self.fourier_trans(inputs)
-
-        do_tube_masker = False
-        if do_tube_masker:
-            inputs = self.tube_masker(inputs)
-
-        return inputs
 
     def get_random_offset(self, length, target_interval, idx, fps, start=0):
         if self.vid_frame_count is None or length < self.vid_frame_count * target_interval:
@@ -400,10 +347,6 @@ def main():
                 )
                 return repr_str
 
-        # CPU-friendly transforms or transforms that adapt to the input device (like TubeMasker)
-        # can potentially still be applied here.
-        dataset = dataset.map(TubeMasker(input_size=(8, 14, 14), mask_ratio=0.5))
-
         # Wrap with DataLoader *after* all map operations intended for CPU workers
         # Note: accelerate will further wrap this DataLoader.
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
@@ -415,16 +358,6 @@ def main():
         from pathlib import Path
 
         from tqdm import tqdm
-
-        from infreqact.data.transforms.fourier import (
-            PhaseOnly,  # Import PhaseOnly here for demonstration
-        )
-
-        # --- Example of where to apply PhaseOnly in a training loop ---
-        # Assume 'accelerator' is your accelerate Accelerator object
-        # Assume 'model' is your model
-        # dataloader, model = accelerator.prepare(dataloader, model)
-        phase_only_transform = PhaseOnly(in_arrangement="t c h w")  # Initialize the transform once
 
         profiler = cProfile.Profile()
         profiler.enable()

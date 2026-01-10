@@ -1,4 +1,4 @@
-# Qwen QwQ (Thinking) models
+# Qwen (Thinking) models
 
 # Model identification
 family: "Qwen"
@@ -10,4 +10,4 @@ params: "4B"
 name: "${model.family}${model.version}-${model.variant}"
 checkpoint_path: "${model.family}/${model.name}"
 
-# potentially alter the sampling params for thinking models
+needs_video_metadata: true
