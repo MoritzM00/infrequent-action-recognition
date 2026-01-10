@@ -17,10 +17,11 @@ num_workers: 0
 vllm:
   use_mock: false  # Enable mock mode for debugging without GPU
   tensor_parallel_size: 1
+  # faster warm up times for debugging
   skip_mm_profiling: true
+  enforce_eager: true
 
-log_videos: 1
-# Disable W&B for debugging (offline mode)
+log_videos: 0
 wandb:
   project: "fall-detection-testing"
-  mode: online  # or offline, online, disabled
+  mode: disabled  # or offline, online, disabled
