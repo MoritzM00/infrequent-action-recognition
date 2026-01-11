@@ -14,7 +14,8 @@ class PromptConfig:
         include_label_definitions: Whether to include label definitions and constraints
         include_constraints: Whether to include sequence rules and constraints
         cot: Whether to enable chain-of-thought reasoning
-        cot_delimiter: Delimiter between reasoning and final answer (for CoT mode)
+        cot_start_tag: Opening tag for reasoning content (default: "<think>")
+        cot_end_tag: Closing tag for reasoning content (default: "</think>")
         few_shot_examples: Optional list of paths to few-shot example configs
         model_family: Model family name for model-specific adjustments (e.g., "qwen", "InternVL")
     """
@@ -24,6 +25,7 @@ class PromptConfig:
     include_label_definitions: bool = True
     include_constraints: bool = True
     cot: bool = False
-    cot_delimiter: str = "Final Answer:"
+    cot_start_tag: str = "<think>"
+    cot_end_tag: str = "</think>"
     few_shot_examples: list[str] | None = None
     model_family: str = "qwen"

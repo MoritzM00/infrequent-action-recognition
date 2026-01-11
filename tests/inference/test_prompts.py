@@ -34,7 +34,8 @@ class TestPromptConfig:
         assert config.include_label_definitions is True
         assert config.include_constraints is True
         assert config.cot is False
-        assert config.cot_delimiter == "Final Answer:"
+        assert config.cot_start_tag == "<think>"
+        assert config.cot_end_tag == "</think>"
         assert config.few_shot_examples is None
         assert config.model_family == "qwen"
 
@@ -114,9 +115,10 @@ class TestPromptBuilder:
         builder = PromptBuilder(config)
         prompt = builder.build_prompt()
 
-        # InternVL R1 prefix should NOT be in the user prompt (it's in system message)
+        # InternVL R1 system-level prefix should NOT be in the user prompt (it's in system message)
+        # Note: The CoT instruction will mention <think> tags, which is expected
         assert "You are a helpful assistant" not in prompt
-        assert "<think>" not in prompt
+        assert "conduct a detailed analysis" not in prompt  # From R1 system prompt
 
     def test_no_system_prefix_in_prompt_without_cot(self):
         """Test that no system-level prompts are in user prompt without CoT."""
@@ -272,16 +274,16 @@ class TestKeywordOutputParser:
 class TestCoTOutputParser:
     """Tests for CoTOutputParser."""
 
-    def test_parse_with_delimiter(self):
-        """Test parsing CoT output with delimiter."""
+    def test_parse_with_think_tags(self):
+        """Test parsing CoT output with think tags."""
         base_parser = JSONOutputParser()
-        parser = CoTOutputParser(base_parser, delimiter="Final Answer:")
+        parser = CoTOutputParser(base_parser)
 
-        text = """
+        text = """<think>
         The person appears to lose balance and falls rapidly.
         This is clearly an uncontrolled descent.
-
-        Final Answer: {"label": "fall"}
+        </think>
+        {"label": "fall"}
         """
 
         result = parser.parse(text, LABEL2IDX)
@@ -290,27 +292,27 @@ class TestCoTOutputParser:
         assert "lose balance" in result.reasoning
         assert result.raw_text == text
 
-    def test_parse_without_delimiter(self):
-        """Test parsing CoT output without delimiter (fallback)."""
+    def test_parse_without_tags(self):
+        """Test parsing CoT output without tags (fallback)."""
         base_parser = JSONOutputParser()
-        parser = CoTOutputParser(base_parser, delimiter="Final Answer:")
+        parser = CoTOutputParser(base_parser)
 
         text = '{"label": "walk"}'
         result = parser.parse(text, LABEL2IDX)
 
         # Should parse entire text as answer
         assert result.label == "walk"
-        assert result.reasoning == ""
+        assert result.reasoning is None
 
     def test_parse_with_keyword_base_parser(self):
         """Test CoT parser wrapping keyword parser."""
         base_parser = KeywordOutputParser()
-        parser = CoTOutputParser(base_parser, delimiter="Final Answer:")
+        parser = CoTOutputParser(base_parser)
 
-        text = """
+        text = """<think>
         The person is moving forward steadily.
-
-        Final Answer: walk
+        </think>
+        walk
         """
 
         result = parser.parse(text, LABEL2IDX)
@@ -318,18 +320,51 @@ class TestCoTOutputParser:
         assert result.label == "walk"
         assert "moving forward" in result.reasoning
 
-    def test_custom_delimiter(self):
-        """Test CoT parser with custom delimiter."""
+    def test_custom_tags(self):
+        """Test CoT parser with custom tags."""
         base_parser = JSONOutputParser()
-        parser = CoTOutputParser(base_parser, delimiter="Answer:")
+        parser = CoTOutputParser(base_parser, start_tag="<reasoning>", end_tag="</reasoning>")
 
-        text = """
-        Reasoning here.
-
-        Answer: {"label": "sitting"}
+        text = """<reasoning>
+        Analyzing the video.
+        </reasoning>
+        {"label": "sitting"}
         """
 
         result = parser.parse(text, LABEL2IDX)
 
         assert result.label == "sitting"
-        assert "Reasoning here" in result.reasoning
+        assert "Analyzing" in result.reasoning
+
+    def test_extract_reasoning(self):
+        """Test extract_reasoning method."""
+        base_parser = JSONOutputParser()
+        parser = CoTOutputParser(base_parser)
+
+        text = "<think>reasoning here</think>content here"
+        reasoning, content = parser.extract_reasoning(text)
+
+        assert reasoning == "reasoning here"
+        assert content == "content here"
+
+    def test_extract_reasoning_no_end_tag(self):
+        """Test extract_reasoning when end tag is missing."""
+        base_parser = JSONOutputParser()
+        parser = CoTOutputParser(base_parser)
+
+        text = "<think>reasoning here"
+        reasoning, content = parser.extract_reasoning(text)
+
+        assert reasoning == "reasoning here"
+        assert content is None
+
+    def test_extract_reasoning_no_start_tag(self):
+        """Test extract_reasoning when start tag is missing."""
+        base_parser = JSONOutputParser()
+        parser = CoTOutputParser(base_parser)
+
+        text = "just content here"
+        reasoning, content = parser.extract_reasoning(text)
+
+        assert reasoning is None
+        assert content == "just content here"

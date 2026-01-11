@@ -130,7 +130,11 @@ class PromptBuilder:
 
         # Wrap with CoT parser if chain-of-thought is enabled
         if self.config.cot:
-            return CoTOutputParser(base_parser, delimiter=self.config.cot_delimiter)
+            return CoTOutputParser(
+                base_parser,
+                start_tag=self.config.cot_start_tag,
+                end_tag=self.config.cot_end_tag,
+            )
 
         return base_parser
 

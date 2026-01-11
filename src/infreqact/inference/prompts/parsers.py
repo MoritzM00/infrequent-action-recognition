@@ -142,24 +142,60 @@ class KeywordOutputParser:
 
 
 class CoTOutputParser:
-    """Parser wrapper for chain-of-thought outputs.
+    """Parser wrapper for chain-of-thought outputs using think tags.
 
-    Splits the output on a delimiter to separate reasoning from final answer,
-    then uses a wrapped parser to extract the label from the final answer.
+    Extracts reasoning enclosed in tags (e.g., <think>...</think>)
+    and parses the content after the closing tag for the label.
+    Adopts vLLM's reasoning parser interface.
     """
 
-    def __init__(self, answer_parser: OutputParser, delimiter: str = "Final Answer:"):
+    def __init__(
+        self, answer_parser: OutputParser, start_tag: str = "<think>", end_tag: str = "</think>"
+    ):
         """Initialize CoT parser.
 
         Args:
             answer_parser: Parser to use for extracting label from final answer
-            delimiter: String that separates reasoning from final answer
+            start_tag: Opening tag for reasoning content (e.g., "<think>")
+            end_tag: Closing tag for reasoning content (e.g., "</think>")
         """
         self.answer_parser = answer_parser
-        self.delimiter = delimiter
+        self.start_tag = start_tag
+        self.end_tag = end_tag
+
+    def extract_reasoning(self, text: str) -> tuple[str | None, str | None]:
+        """Extract reasoning and content from model output.
+
+        Follows vLLM's reasoning parser interface. Returns (reasoning, content)
+        where reasoning is the text within tags, and content is text after tags.
+
+        Args:
+            text: Raw output text from LLM
+
+        Returns:
+            tuple: (reasoning, content) - either may be None
+        """
+        if self.start_tag not in text:
+            # No start tag - entire text is content
+            return None, text
+
+        # Remove start tag and get everything after it
+        _, _, after_start = text.partition(self.start_tag)
+
+        if self.end_tag not in after_start:
+            # No end tag - treat everything after start as reasoning
+            logger.warning(
+                f"CoT end tag '{self.end_tag}' not found after start tag. "
+                f"Treating remaining text as reasoning only."
+            )
+            return after_start.strip(), None
+
+        # Split on end tag
+        reasoning, _, content = after_start.partition(self.end_tag)
+        return reasoning.strip(), content.strip() if content else None
 
     def parse(self, text: str, label2idx: dict) -> ParseResult:
-        """Parse CoT output by splitting reasoning and answer.
+        """Parse CoT output by extracting reasoning and parsing content.
 
         Args:
             text: Raw output text from LLM (with reasoning + final answer)
@@ -168,22 +204,15 @@ class CoTOutputParser:
         Returns:
             ParseResult with extracted label and reasoning
         """
-        if self.delimiter in text:
-            # Split on the last occurrence of delimiter
-            reasoning, answer = text.rsplit(self.delimiter, 1)
-            reasoning = reasoning.strip()
-            answer = answer.strip()
-        else:
-            # Fallback: no delimiter found, parse entire text as answer
-            logger.warning(
-                f"CoT delimiter '{self.delimiter}' not found in output. "
-                f"Parsing entire text as answer."
-            )
-            reasoning = ""
-            answer = text
+        reasoning, content = self.extract_reasoning(text)
 
-        # Parse the answer portion
-        result = self.answer_parser.parse(answer, label2idx)
+        # Parse the content portion for the label
+        if content:
+            result = self.answer_parser.parse(content, label2idx)
+        else:
+            # Fallback: parse entire text as answer
+            logger.warning("No content found after reasoning tags. Parsing entire text as answer.")
+            result = self.answer_parser.parse(text, label2idx)
 
         # Add reasoning to result
         result.reasoning = reasoning

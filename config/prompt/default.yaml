@@ -7,6 +7,7 @@ include_role: true
 include_label_definitions: true
 include_constraints: true
 cot: false
-cot_delimiter: "Final Answer:"
+cot_start_tag: "<think>"
+cot_end_tag: "</think>"
 few_shot_examples: null
 model_family: ${model.family}

@@ -37,7 +37,8 @@ CONSTRAINTS_COMPONENT = textwrap.dedent("""
 # Chain-of-thought instruction
 COT_INSTRUCTION = textwrap.dedent("""
     Please reason step-by-step, identify relevant visual content,
-    analyze key timestamps and clues, and then provide the final answer.
+    analyze key timestamps and clues. Enclose your reasoning within <think> and </think> tags,
+    then provide the final answer.
 """).strip()
 
 # Output format instructions
