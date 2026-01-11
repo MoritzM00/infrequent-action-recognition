@@ -1,11 +1,7 @@
-# Chain-of-Thought prompt configuration
-# Enables free-form reasoning followed by final answer
-# Uses <think> tags to delimit reasoning from content
-
-output_format: json
+output_format: text
 include_role: true
-include_label_definitions: true
-include_constraints: true
+include_definitions: false
+include_adherence: false
 cot: true
 cot_start_tag: "<think>"
 cot_end_tag: "</think>"

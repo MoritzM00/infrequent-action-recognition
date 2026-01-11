@@ -2,13 +2,13 @@
 
 from .components import (
     ADHERENCE_INSTRUCTION,
-    CONSTRAINTS_COMPONENT,
     COT_INSTRUCTION,
     DEFINITIONS_COMPONENT,
-    INTERNVL_R1_SYSTEM_PROMPT,
     JSON_OUTPUT_FORMAT,
     LABELS_COMPONENT,
+    R1_SYSTEM_PROMPT,
     ROLE_COMPONENT,
+    TASK_INSTRUCTION,
     TEXT_OUTPUT_FORMAT,
 )
 from .config import PromptConfig
@@ -38,32 +38,34 @@ class PromptBuilder:
         if self.config.include_role:
             sections.append(ROLE_COMPONENT)
 
-        # 2. Labels section (always included)
-        sections.append(LABELS_COMPONENT)
+        # 2. Task instruction (always included)
+        sections.append(TASK_INSTRUCTION)
 
-        # 3. Definitions & Constraints (optional)
-        if self.config.include_label_definitions:
+        # 3. Labels section (always included)
+        sections.append(self._build_labels_section())
+
+        # 4. Definitions & Constraints (optional)
+        if self.config.include_definitions:
             sections.append(DEFINITIONS_COMPONENT)
-        if self.config.include_constraints:
-            sections.append(CONSTRAINTS_COMPONENT)
 
-        # 4. Few-shot examples (optional)
+        # 5. Few-shot examples (optional)
         if self.config.few_shot_examples:
             sections.append(self._build_fewshot_section())
-
-        # 5. Chain-of-thought instruction (optional)
-        if self.config.cot:
-            sections.append(COT_INSTRUCTION)
 
         # 6. Output format instruction
         sections.append(self._build_output_format())
 
-        # 7. Adherence instruction
-        sections.append(ADHERENCE_INSTRUCTION)
+        # 7. Chain-of-thought instruction (optional)
+        if self.config.cot:
+            sections.append(COT_INSTRUCTION)
+
+        # 8. Adherence instruction (optional)
+        if self.config.include_adherence:
+            sections.append(ADHERENCE_INSTRUCTION)
 
         return "\n\n".join(sections)
 
-    def _needs_internvl_r1_prefix(self) -> bool:
+    def _needs_r1_prefix(self) -> bool:
         """Check if InternVL R1 system prompt is needed.
 
         Returns:
@@ -116,6 +118,19 @@ class PromptBuilder:
 
         return "\n".join(examples_text)
 
+    def _build_labels_section(self) -> str:
+        """Build labels section from config or use default.
+
+        Returns:
+            Labels section string
+        """
+        if self.config.labels:
+            lines = ["Allowed Labels:"]
+            for label in self.config.labels:
+                lines.append(f"- {label}")
+            return "\n".join(lines)
+        return LABELS_COMPONENT
+
     def get_parser(self) -> OutputParser:
         """Return the appropriate parser for this prompt's output format.
 
@@ -144,9 +159,9 @@ class PromptBuilder:
         Returns:
             System message dict with role and content, or None if not needed
         """
-        if self._needs_internvl_r1_prefix():
+        if self._needs_r1_prefix():
             return {
                 "role": "system",
-                "content": [{"type": "text", "text": INTERNVL_R1_SYSTEM_PROMPT}],
+                "content": [{"type": "text", "text": R1_SYSTEM_PROMPT}],
             }
         return None

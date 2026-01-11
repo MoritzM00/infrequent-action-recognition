@@ -1,11 +1,7 @@
-# Default prompt configuration
-# Uses all components: role, labels, definitions, constraints
-# Output format: JSON
-
-output_format: json
+output_format: text
 include_role: true
-include_label_definitions: true
-include_constraints: true
+include_definitions: false
+include_adherence: false
 cot: false
 cot_start_tag: "<think>"
 cot_end_tag: "</think>"

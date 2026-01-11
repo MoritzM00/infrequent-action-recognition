@@ -31,8 +31,7 @@ class TestPromptConfig:
         config = PromptConfig()
         assert config.output_format == "json"
         assert config.include_role is True
-        assert config.include_label_definitions is True
-        assert config.include_constraints is True
+        assert config.include_definitions is True
         assert config.cot is False
         assert config.cot_start_tag == "<think>"
         assert config.cot_end_tag == "</think>"
@@ -74,8 +73,7 @@ class TestPromptBuilder:
         """Test building baseline prompt without role and definitions."""
         config = PromptConfig(
             include_role=False,
-            include_label_definitions=False,
-            include_constraints=False,
+            include_definitions=False,
         )
         builder = PromptBuilder(config)
         prompt = builder.build_prompt()

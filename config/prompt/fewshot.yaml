@@ -1,11 +1,7 @@
-# Few-shot prompt configuration
-# Includes example videos with labels to help the model understand the task
-# Output format: JSON
-
 output_format: json
 include_role: true
-include_label_definitions: true
-include_constraints: true
+include_definitions: true
+include_adherence: true
 cot: false
 cot_delimiter: "Final Answer:"
 few_shot_examples:

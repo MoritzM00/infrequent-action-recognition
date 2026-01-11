@@ -164,7 +164,9 @@ def main(cfg: DictConfig):
     )
 
     # Build prompt from config
-    prompt_config = PromptConfig(**cfg.prompt)
+    # Extract labels from label2idx (filter out special labels with negative indices)
+    labels = list(label2idx.keys())
+    prompt_config = PromptConfig(labels=labels, **cfg.prompt)
     prompt_builder = PromptBuilder(prompt_config)
     prompt = prompt_builder.build_prompt()
     parser = prompt_builder.get_parser()
