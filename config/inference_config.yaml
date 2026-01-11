@@ -20,7 +20,6 @@ num_frames: 16  # Number of frames to extract per video
 # Inference settings
 batch_size: 50
 num_workers: 8
-cot: false  # Chain of thought reasoning
 
 # Output configuration
 output_dir: "outputs"

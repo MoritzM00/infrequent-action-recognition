@@ -5,8 +5,6 @@ defaults:
 
 # Full dataset evaluation
 num_samples: null  # Process all samples
-verbose: false
-cot: false  # No chain-of-thought for baseline
 
 # Model configuration
 model:

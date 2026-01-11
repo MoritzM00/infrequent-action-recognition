@@ -84,11 +84,6 @@ def main(cfg: DictConfig):
 
     Args:
         cfg: Hydra configuration containing:
-            - model: Model configuration (checkpoint, vllm settings, sampling params)
-            - dataset: Dataset configuration (video paths, annotations, etc.)
-            - inference: Inference settings (batch_size, num_workers, cot)
-            - num_samples: Number of samples to process (None for full dataset)
-            - verbose: Verbosity level for output printing
     """
     random.seed(cfg.dataset_seed)
     # Resolve all OmegaConf interpolations once at the beginning
@@ -145,7 +140,6 @@ def main(cfg: DictConfig):
         f"Processing {len(dataset)} samples with batch_size={cfg.batch_size}, "
         f"num_workers={cfg.num_workers}"
     )
-    logger.info(f"Chain-of-thought: {cfg.cot}")
 
     checkpoint_path = cfg.model.checkpoint_path
     logger.info(f"Loading model and processor: {checkpoint_path}")
