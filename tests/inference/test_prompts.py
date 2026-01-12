@@ -104,7 +104,7 @@ class TestPromptBuilder:
         prompt = builder.build_prompt()
 
         # Check that text output format is used
-        assert "State only the label" in prompt
+        assert "The best answer is:" in prompt
         assert '{"label"' not in prompt
 
     def test_no_system_prefix_in_prompt_without_cot(self):

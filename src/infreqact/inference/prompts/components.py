@@ -52,8 +52,7 @@ JSON_OUTPUT_FORMAT = textwrap.dedent("""
 """).strip()
 
 TEXT_OUTPUT_FORMAT = textwrap.dedent("""
-    Output Format:
-    State only the label from the allowed labels list.
+    The best answer is:
 """).strip()
 
 # Final instruction for strict adherence

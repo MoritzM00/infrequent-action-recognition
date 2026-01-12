@@ -28,3 +28,14 @@ uv pip install -r requirements.txt
 uv pip install -r requirements-dev.txt
 uv pip install -e .
 ```
+
+## Recommended Environment variables
+Control GPU behavior:
+```shell
+export CUDA_VISIBLE_DEVICES=0 # or e,g, 0,1
+```
+
+```shell
+export VLLM_CONFIGURE_LOGGING=0
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+```

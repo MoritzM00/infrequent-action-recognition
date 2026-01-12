@@ -18,7 +18,7 @@ model_fps: 8.0  # Target frame rate for video sampling
 num_frames: 16  # Number of frames to extract per video
 
 # Inference settings
-batch_size: 50
+batch_size: 32
 num_workers: 8
 
 # Output configuration
