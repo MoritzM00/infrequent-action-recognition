@@ -85,7 +85,7 @@ def main(cfg: DictConfig):
     Args:
         cfg: Hydra configuration containing:
     """
-    random.seed(cfg.dataset_seed)
+    random.seed(cfg.data.seed)
     # Resolve all OmegaConf interpolations once at the beginning
     OmegaConf.resolve(cfg)
 

@@ -1,7 +1,7 @@
 defaults:
   # dataset specified by experiment config
   - vllm: default
-  - sampling: greedy
+  - sampling: qwen3_instruct
   - model: qwen/instruct
   - prompt: default
   - _self_
@@ -14,8 +14,6 @@ data:
   input_size:
     height: 320
     width: 576
-
-dataset_seed: 0
 
 # Global video processing parameters
 model_fps: 8.0  # Target frame rate for video sampling
