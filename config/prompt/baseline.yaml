@@ -1,7 +1,5 @@
 output_format: text
 include_role: false
 include_definitions: false
-include_adherence: false
 cot: false
-few_shot_examples: null
 model_family: ${model.family}

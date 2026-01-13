@@ -49,15 +49,11 @@ class PromptBuilder:
         if self.config.include_definitions:
             sections.append(DEFINITIONS_COMPONENT)
 
-        # 5. Few-shot examples (optional)
-        if self.config.few_shot_examples:
-            sections.append(self._build_fewshot_section())
-
-        # 6. Chain-of-thought instruction (optional)
+        # 5. Chain-of-thought instruction (optional)
         if self.config.cot:
             sections.append(COT_INSTRUCTION)
 
-        # 7. Output format instruction
+        # 6. Output format instruction
         sections.append(self._build_output_format())
 
         return "\n\n".join(sections)
@@ -79,41 +75,6 @@ class PromptBuilder:
         if self.config.output_format == "json":
             return JSON_OUTPUT_FORMAT
         return TEXT_OUTPUT_FORMAT
-
-    def _build_fewshot_section(self) -> str:
-        """Build few-shot examples section.
-
-        Returns:
-            Few-shot examples formatted as a prompt section
-        """
-
-        import yaml
-
-        if not self.config.few_shot_examples:
-            return ""
-
-        examples_text = ["Examples:"]
-
-        for i, example_path in enumerate(self.config.few_shot_examples, 1):
-            try:
-                # Load example config
-                with open(example_path) as f:
-                    example = yaml.safe_load(f)
-
-                label = example.get("label", "unknown")
-                description = example.get("description", "")
-
-                # Format example
-                example_text = f"Example {i}: Video shows {description} → Label: {label}"
-                examples_text.append(example_text)
-            except Exception as e:
-                # Log warning but continue
-                import logging
-
-                logger = logging.getLogger(__name__)
-                logger.warning(f"Failed to load few-shot example from {example_path}: {e}")
-
-        return "\n".join(examples_text)
 
     def _build_labels_section(self) -> str:
         """Build labels section from config or use default.

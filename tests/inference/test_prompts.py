@@ -35,7 +35,6 @@ class TestPromptConfig:
         assert config.cot is False
         assert config.cot_start_tag == "<think>"
         assert config.cot_end_tag == "</think>"
-        assert config.few_shot_examples is None
         assert config.model_family == "qwen"
 
     def test_custom_config(self):
@@ -65,7 +64,6 @@ class TestPromptBuilder:
         assert "Role:" in prompt
         assert "Allowed Labels:" in prompt
         assert "Definitions & Constraints:" in prompt
-        assert "Sequence Rules:" in prompt
         assert "Output Format:" in prompt
         assert '"label": "<class_label>"' in prompt
 

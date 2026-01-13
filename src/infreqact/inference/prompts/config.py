@@ -16,7 +16,6 @@ class PromptConfig:
         cot: Whether to enable chain-of-thought reasoning
         cot_start_tag: Opening tag for reasoning content (default: "<think>")
         cot_end_tag: Closing tag for reasoning content (default: "</think>")
-        few_shot_examples: Optional list of paths to few-shot example configs
         labels: Optional list of labels to include in prompt. If None, uses hardcoded defaults
         model_family: Model family name for model-specific adjustments (e.g., "qwen", "InternVL")
     """
@@ -28,6 +27,5 @@ class PromptConfig:
     cot: bool = False
     cot_start_tag: str = "<think>"
     cot_end_tag: str = "</think>"
-    few_shot_examples: list[str] | None = None
     labels: list[str] | None = None
     model_family: str = "qwen"
