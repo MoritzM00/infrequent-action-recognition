@@ -1,7 +1,6 @@
 """Prompt builder for assembling video action recognition prompts."""
 
 from .components import (
-    ADHERENCE_INSTRUCTION,
     COT_INSTRUCTION,
     DEFINITIONS_COMPONENT,
     JSON_OUTPUT_FORMAT,
@@ -54,16 +53,12 @@ class PromptBuilder:
         if self.config.few_shot_examples:
             sections.append(self._build_fewshot_section())
 
-        # 6. Output format instruction
-        sections.append(self._build_output_format())
-
-        # 7. Chain-of-thought instruction (optional)
+        # 6. Chain-of-thought instruction (optional)
         if self.config.cot:
             sections.append(COT_INSTRUCTION)
 
-        # 8. Adherence instruction (optional)
-        if self.config.include_adherence:
-            sections.append(ADHERENCE_INSTRUCTION)
+        # 7. Output format instruction
+        sections.append(self._build_output_format())
 
         return "\n\n".join(sections)
 

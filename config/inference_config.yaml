@@ -7,9 +7,13 @@ defaults:
   - _self_
   - experiment: debug
 
-input_size:
-  height: 320
-  width: 576
+data:
+  # Global data parameters
+  seed: 0
+  split: cs
+  input_size:
+    height: 320
+    width: 576
 
 dataset_seed: 0
 

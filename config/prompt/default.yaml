@@ -1,5 +1,5 @@
 output_format: json
-include_role: false
+include_role: true
 include_definitions: false
 include_adherence: false
 cot: false

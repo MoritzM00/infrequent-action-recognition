@@ -5,11 +5,12 @@ import textwrap
 # Role description (expert persona)
 ROLE_COMPONENT = textwrap.dedent("""
     Role:
-    You are an expert Human Activity Recognition (HAR) specialist.
+    You are an expert video analyst specialized in recognizing human actions from short video clips.
 """).strip()
 
 # Task instruction (always included)
 TASK_INSTRUCTION = textwrap.dedent("""
+    Task:
     Analyze the video clip and classify the primary action being performed. Only use one of the allowed labels provided below.
 """).strip()
 
@@ -23,17 +24,12 @@ LABELS_COMPONENT = textwrap.dedent("""
 # Label definitions and constraints
 DEFINITIONS_COMPONENT = textwrap.dedent("""
     Definitions & Constraints:
-    - Walk vs. Other: walk includes jogging, drunk walking, and carrying small items. Pushing large objects (chairs, carts) must be labeled other.
     - Fall vs. Lie/Sit:
         - fall: Uncontrolled, rapid descent (accidental).
         - lie_down / sit_down: Intentional, controlled descent.
     - Dynamic vs. Static:
-        - Dynamic (Actions): walk, fall, sit_down, lie_down, stand_up. Label starts at first frame of motion.
-        - Static (States): fallen, sitting, lying, standing. Label starts when subject comes to complete rest.
-
-    Sequence Rules:
-    - Moment of Rest: If a person transitions Sit -> Lie without pausing, use only the destination label.
-    - Fall Termination: fall ends when inertia stops. fallen begins only when the person is on the ground in a resting state.
+        - Dynamic (Actions): e.g. walk, fall: subject is moving.
+        - Static (States): e.g. fallen, sitting: subject remains still.
 """).strip()
 
 # Chain-of-thought instruction
@@ -52,13 +48,8 @@ JSON_OUTPUT_FORMAT = textwrap.dedent("""
 """).strip()
 
 TEXT_OUTPUT_FORMAT = textwrap.dedent("""
-    The best answer is:
-""").strip()
-
-# Final instruction for strict adherence
-ADHERENCE_INSTRUCTION = textwrap.dedent("""
-    Only use the allowed labels and stick exactly to the output format. If uncertain between two labels,
-    choose the one that best fits the definitions above. Don't invent new labels.
+    Output Format:
+    Respond with 'The best answer is: <class_label>' where <class_label> is one of the allowed labels.
 """).strip()
 
 # Model-specific components

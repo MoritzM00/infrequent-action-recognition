@@ -110,16 +110,13 @@ def main(cfg: DictConfig):
     run = initialize_run_from_config(cfg)
     reconfigure_logging_after_wandb(rich_handler, file_handler)
 
-    # Create config structure compatible with get_video_datasets
-    # Wrap dataset config as dataset_test for the factory
-
     multi_dataset = get_video_datasets(
         cfg=cfg,
         mode=cfg.dataset.get("mode", "test"),
         run=run,
         return_individual=True,
-        split=cfg.dataset.get("split", "cs"),
-        size=(cfg.input_size.height, cfg.input_size.width),
+        split=cfg.data.split,
+        size=(cfg.data.input_size.height, cfg.data.input_size.width),
     )
     for dataset_name, dataset in multi_dataset["individual"].items():
         # TODO: support multiple datasets in vLLM inference
@@ -208,6 +205,7 @@ def main(cfg: DictConfig):
     prompt = prompt_builder.build_prompt()
     parser = prompt_builder.get_parser()
     system_message = prompt_builder.get_system_message()
+    logger.info(f"Prompt:\n{prompt}")
 
     logger.info("Generating predictions...")
 
