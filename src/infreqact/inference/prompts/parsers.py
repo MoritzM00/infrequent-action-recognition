@@ -147,7 +147,6 @@ class KeywordOutputParser:
 
             for pattern in patterns:
                 if re.search(pattern, text_lower):
-                    logger.debug(f"Matched label '{label}' in text: {text[:100]}")
                     return ParseResult(label=label, reasoning=None, raw_text=text)
 
         logger.warning(f"No valid label found in text. Defaulting to 'other'. Text: {text[:100]}")
