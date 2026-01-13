@@ -299,8 +299,6 @@ def main(cfg: DictConfig):
             predictions=predictions,
             wandb_run_id=wandb_run_id,
         )
-        logger.info(f"Saved predictions to {predictions_file}")
-
         run.save(predictions_file.as_posix())
 
     evaluate_predictions(
