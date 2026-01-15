@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 import sys
 import time
@@ -298,4 +299,5 @@ def hydra_main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
+    os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"  # default fork does not work!
     hydra_main()

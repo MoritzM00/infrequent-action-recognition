@@ -29,8 +29,18 @@ uv pip install -r requirements-dev.txt
 uv pip install -e .
 ```
 
-## Recommended Environment variables
-Control GPU behavior:
+## Environment variables
+
+### Required
+
+```shell
+OMNIFALL_ROOT=path/to/omnifall
+VLLM_WORKER_MULTIPROC_METHOD=spawn
+```
+
+### Recommended
+These variables should be set **before** launching the vllm inference script.
+```shell
 export CUDA_VISIBLE_DEVICES=0 # or e.g., 0,1
 export VLLM_CONFIGURE_LOGGING=0
-export VLLM_WORKER_MULTIPROC_METHOD=spawn
+```
