@@ -35,14 +35,15 @@ def build_tags(config: dict) -> list[str]:
     return tags
 
 
-def build_command(config: dict) -> list[str]:
+def build_command(config: dict, model: str = "qwen/instruct", params: str = "8B") -> list[str]:
     """Build hydra command for a config."""
     cmd = [
         "python",
         "scripts/vllm_inference.py",
         "experiment=zeroshot",
-        "model=qwen/instruct",
-        "model.params=8B",
+        "data.mode=val",
+        f"model={model}",
+        f"model.params={params}",
         "sampling=qwen3_instruct",
         "vllm.tensor_parallel_size=1",
     ]
@@ -72,9 +73,11 @@ def format_command_for_display(cmd: list[str]) -> str:
     return " ".join(formatted_parts)
 
 
-def run_experiment(config: dict, dry_run: bool = False):
+def run_experiment(
+    config: dict, dry_run: bool = False, model: str = "qwen/instruct", params: str = "8B"
+):
     """Run single experiment."""
-    cmd = build_command(config)
+    cmd = build_command(config, model=model, params=params)
 
     if dry_run:
         print(f"[DRY-RUN] {format_command_for_display(cmd)}\n")
@@ -99,6 +102,18 @@ def main():
         default=0,
         help="Skip first N experiments (for resuming, 0-indexed)",
     )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="qwen/instruct",
+        help="Model name for experiments (default: qwen/instruct)",
+    )
+    parser.add_argument(
+        "--params",
+        type=str,
+        default="8B",
+        help="Model parameters for experiments (default: 8B)",
+    )
     args = parser.parse_args()
 
     configs = list(generate_experiment_configs())
@@ -112,7 +127,7 @@ def main():
         print(f"Experiment {i + 1}/{len(configs)}")
         print(f"Config: {config}")
         print(f"{'=' * 60}")
-        run_experiment(config, args.dry_run)
+        run_experiment(config, args.dry_run, model=args.model, params=args.params)
 
     if not args.dry_run:
         print(f"\n{'=' * 60}")
