@@ -1,5 +1,4 @@
 import logging
-import os
 import random
 import sys
 import time
@@ -70,11 +69,12 @@ def main(cfg: DictConfig):
 
     multi_dataset = get_video_datasets(
         cfg=cfg,
-        mode=cfg.dataset.get("mode", "test"),
+        mode=cfg.data.mode,
         run=run,
         return_individual=True,
         split=cfg.data.split,
-        size=(cfg.data.input_size.height, cfg.data.input_size.width),
+        size=cfg.data.size,
+        max_size=cfg.data.max_size,
     )
     for dataset_name, dataset in multi_dataset["individual"].items():
         # TODO: support multiple datasets in vLLM inference
@@ -289,8 +289,6 @@ def hydra_main(cfg: DictConfig):
         console_level=logging.INFO,
         file_level=logging.DEBUG,
     )
-    os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
-    os.environ["VLLM_CONFIGURE_LOGGING"] = "0"
     try:
         main(cfg)
     except Exception as e:

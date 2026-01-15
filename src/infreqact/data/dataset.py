@@ -23,6 +23,7 @@ class GenericVideoDataset(Dataset):
         mode="train",
         fast=True,
         size=None,
+        max_size=None,
     ):
         self.video_root = video_root
         self.slow_video_file = annotations_file.replace(".csv", "_slow.csv")
@@ -37,6 +38,7 @@ class GenericVideoDataset(Dataset):
         )
         self.annotations = {}
         self.size = size
+        self.max_size = max_size
 
     def load_annotations(self, annotations_file):
         # call manually after init if needed
@@ -104,7 +106,12 @@ class GenericVideoDataset(Dataset):
 
         if self.size is not None:
             # size is (height, width)
-            frames = F.resize(frames, self.size, interpolation=F.InterpolationMode.BILINEAR)
+            frames = F.resize(
+                frames,
+                size=self.size,
+                max_size=self.max_size,
+                interpolation=F.InterpolationMode.BILINEAR,
+            )
 
         return {"video": frames}
 

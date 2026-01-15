@@ -53,6 +53,7 @@ class OmnifallVideoDataset(GenericVideoDataset):
         fast=True,
         ext=".mp4",
         size=None,
+        max_size=None,
         **kwargs,
     ):
         """
@@ -82,13 +83,13 @@ class OmnifallVideoDataset(GenericVideoDataset):
             max_retries=max_retries,
             mode=mode,
             fast=fast,
+            size=size,
+            max_size=max_size,
         )
         self.dataset_name = dataset_name
         self.split = split
-        self.mode = mode
         self.split_root = split_root
         self.ext = ext
-        self.size = size
 
         logging.info(
             f"Initializing {self.dataset_name} dataset in {self.mode} mode with split {self.split}"

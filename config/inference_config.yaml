@@ -11,9 +11,9 @@ data:
   # Global data parameters
   seed: 0
   split: cs
-  input_size:
-    height: 320
-    width: 576
+  mode: test
+  size: 300 # corresponds to shorter edge
+  max_size: null # if longer edge exceeds this after resizing to shortest edge (input_size), resize again to make longer edge at most max_size
 
 # Global video processing parameters
 model_fps: 8.0  # Target frame rate for video sampling
