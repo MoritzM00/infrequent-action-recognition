@@ -1,4 +1,8 @@
 import logging
+import os
+import tempfile
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -145,3 +149,52 @@ def log_confusion_matrix(
             )
         }
     )
+
+
+def load_run_from_wandb(
+    run_id: str,
+    project: str | None = None,
+    entity: str | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Load run config and predictions from W&B.
+
+    Args:
+        run_id: W&B run ID
+        project: W&B project (defaults to WANDB_PROJECT env var)
+        entity: W&B entity (defaults to WANDB_ENTITY env var)
+
+    Returns:
+        Tuple of (config_dict, predictions_list)
+
+    Raises:
+        ValueError: If entity or project is not provided and env var is not set
+        FileNotFoundError: If no JSONL predictions file is found in the run
+    """
+    # Import here to avoid circular import
+    from infreqact.utils.predictions import load_predictions_jsonl
+
+    entity = entity or os.getenv("WANDB_ENTITY")
+    project = project or os.getenv("WANDB_PROJECT")
+
+    if not entity:
+        raise ValueError("Entity not provided and WANDB_ENTITY environment variable not set")
+    if not project:
+        raise ValueError("Project not provided and WANDB_PROJECT environment variable not set")
+
+    logger.info(f"Loading W&B run {entity}/{project}/{run_id}")
+
+    api = wandb.Api()
+    run = api.run(f"{entity}/{project}/{run_id}")
+
+    # Get full config
+    config = dict(run.config)
+
+    # Find and download JSONL file
+    for file in run.files():
+        if file.name.endswith(".jsonl"):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                file.download(root=temp_dir, replace=True)
+                _, predictions = load_predictions_jsonl(Path(temp_dir) / file.name)
+                return config, predictions
+
+    raise FileNotFoundError(f"No JSONL predictions file found in run {run_id}")

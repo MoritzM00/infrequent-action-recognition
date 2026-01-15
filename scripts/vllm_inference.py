@@ -1,10 +1,8 @@
-import json
 import logging
 import os
 import random
 import sys
 import time
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +14,7 @@ from tqdm import tqdm
 from transformers import AutoProcessor
 
 from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
+from infreqact.utils.predictions import save_predictions_jsonl
 
 # vLLM imports are done conditionally inside main() based on cfg.vllm.use_mock
 # This allows switching between real and mock vLLM without code changes
@@ -35,47 +34,6 @@ from infreqact.inference.prompts import PromptBuilder, PromptConfig
 from infreqact.utils.wandb import initialize_run_from_config
 
 logger = logging.getLogger(__name__)
-
-
-def save_predictions_jsonl(
-    output_path: Path,
-    model_name: str,
-    dataset_name: str,
-    prompt: str,
-    prompt_config: PromptConfig,
-    predictions: list[dict],
-    wandb_run_id: str | None = None,
-):
-    """Save predictions in JSONL format with metadata.
-
-    Args:
-        output_path: Path to output JSONL file
-        model_name: Model name
-        dataset_name: Dataset name
-        prompt: Prompt string used for inference
-        prompt_config: PromptConfig dataclass instance
-        predictions: List of prediction dicts
-        wandb_run_id: Optional W&B run ID for linking
-    """
-    with open(output_path, "w") as f:
-        # Write metadata line first
-        metadata = {
-            "type": "metadata",
-            "model": model_name,
-            "dataset": dataset_name,
-            "prompt": prompt,
-            "prompt_config": asdict(prompt_config),
-            "timestamp": datetime.now().isoformat(),
-            "wandb_run_id": wandb_run_id,
-        }
-        f.write(json.dumps(metadata) + "\n")
-
-        # Write each prediction
-        for idx, pred in enumerate(predictions):
-            pred_copy = pred.copy()
-            pred_copy["type"] = "prediction"
-            pred_copy["idx"] = idx
-            f.write(json.dumps(pred_copy) + "\n")
 
 
 def main(cfg: DictConfig):
@@ -295,9 +253,8 @@ def main(cfg: DictConfig):
             output_path=predictions_file,
             model_name=cfg.model.name,
             dataset_name=dataset_name,
-            prompt=prompt,
-            prompt_config=prompt_config,
             predictions=predictions,
+            config=OmegaConf.to_container(cfg, resolve=True),
             wandb_run_id=wandb_run_id,
         )
         run.save(predictions_file.as_posix())
