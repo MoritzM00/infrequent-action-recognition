@@ -18,7 +18,7 @@ from infreqact.evaluation.subgroup import perform_subgroup_evaluation
 from infreqact.evaluation.visual import visualize_evaluation_results
 from infreqact.metrics.base import compute_metrics
 from infreqact.utils.latex import format_subgroup_latex_table
-from infreqact.utils.wandb import log_videos_with_predictions
+from infreqact.utils.wandb import log_confusion_matrix, log_videos_with_predictions
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,12 @@ def evaluate_predictions(
     if run:
         for k, v in metrics.items():
             wandb.log({f"{dataset_name}_{k}": v})
+
+        log_confusion_matrix(
+            predictions=predictions,
+            references=references,
+            dataset_name=dataset_name,
+        )
 
     if save_results:
         save_evaluation_results(metrics, subgroup_results, output_dir)

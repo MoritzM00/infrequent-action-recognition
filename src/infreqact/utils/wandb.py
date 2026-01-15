@@ -6,6 +6,7 @@ from omegaconf import DictConfig, OmegaConf
 
 import wandb
 from infreqact.data.dataset import GenericVideoDataset
+from infreqact.data.video_dataset import label2idx
 
 logger = logging.getLogger(__name__)
 
@@ -101,3 +102,46 @@ def log_videos_with_predictions(
                 )
             }
         )
+
+
+def log_confusion_matrix(
+    predictions: list[str],
+    references: list[str],
+    dataset_name: str,
+) -> None:
+    """Log confusion matrix to wandb.
+
+    Args:
+        predictions: Predicted class labels (as strings)
+        references: Ground truth class labels (as strings)
+        dataset_name: Name of the dataset for logging
+
+    Note:
+        This function creates a contiguous index mapping for present classes only.
+        wandb.plot.confusion_matrix expects contiguous integer indices (0, 1, 2, ...)
+        even if the dataset only contains a subset of all possible classes.
+    """
+    # Collect unique labels from both predictions and references
+    unique_labels = sorted(
+        set(predictions) | set(references), key=lambda x: label2idx.get(x, float("inf"))
+    )
+
+    # Create contiguous mapping for present classes
+    local_label_to_idx = {label: idx for idx, label in enumerate(unique_labels)}
+
+    # Convert string labels to contiguous integer indices
+    predictions_idx = [local_label_to_idx[p] for p in predictions]
+    references_idx = [local_label_to_idx[r] for r in references]
+
+    # Class names in the same order as indices
+    class_names = unique_labels
+
+    wandb.log(
+        {
+            f"{dataset_name}_confusion_matrix": wandb.plot.confusion_matrix(
+                y_true=references_idx,
+                preds=predictions_idx,
+                class_names=class_names,
+            )
+        }
+    )
