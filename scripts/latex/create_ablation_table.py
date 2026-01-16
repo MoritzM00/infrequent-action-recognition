@@ -60,7 +60,7 @@ def fetch_ablation_runs(api, model_tag):
             "$and": [
                 {"tags": ABLATION_TAG},
                 {"tags": model_tag},
-                {"config.data.mode": "val"},
+                {"config.data.mode": "test"},
             ]
         },
         "order": "-created_at",  # newest first

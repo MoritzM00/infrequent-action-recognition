@@ -41,11 +41,12 @@ def build_command(config: dict, model: str = "qwen/instruct", params: str = "8B"
         "python",
         "scripts/vllm_inference.py",
         "experiment=zeroshot",
-        "data.mode=val",
+        "data.mode=test",
         f"model={model}",
         f"model.params={params}",
         "sampling=qwen3_instruct",
         "vllm.tensor_parallel_size=1",
+        "log_videos=0",
     ]
 
     # Add ablation overrides

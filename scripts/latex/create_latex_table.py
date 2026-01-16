@@ -10,7 +10,9 @@ PROJECT = "fall-detection-zeroshot-v2"
 MODEL_NAMES = {
     "x041dgpd": "Qwen3-VL-2B",
     "09bv97i6": "Qwen3-VL-4B",
-    "d44rzw7r": "Qwen3-VL-8B",
+    "d44rzw7r": "Qwen3-VL-8B",  # old run
+    "3fnfyvx6": "Qwen3-VL-8B (new)",
+    "r8y8mw7j": "InternVL3.5-8B",
     "44712k11": "Qwen3-VL-32B",
     "8qrejgdm": "Qwen3-VL-30B-3B",
 }
