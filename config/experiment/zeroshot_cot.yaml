@@ -2,9 +2,14 @@
 
 defaults:
   - /dataset/omnifall/video@dataset: oops
-  - override /model: qwen/thinking
+  - override /model: qwenvl
   - override /sampling: qwen3_thinking
   - override /prompt: cot
+
+
+model:
+  variant: thinking
+  params: 8B
 
 # Full dataset evaluation
 num_samples: null  # Process all samples

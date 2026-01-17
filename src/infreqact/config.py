@@ -1,8 +1,11 @@
 """Configuration utilities for model path resolution."""
 
+import logging
 from typing import Any
 
 from omegaconf import DictConfig
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_model_name_from_config(model_config: Any) -> str:
@@ -35,6 +38,9 @@ def resolve_model_name_from_config(model_config: Any) -> str:
         return f"{family}{version}-VL-{params}-{active_params}-{variant}"
     elif family == "InternVL":
         # InternVL: InternVL3_5-2B-HF
+        if variant is not None:
+            logger.warning("InternVL models do not use variants; ignoring variant field.")
+
         return f"{family}{version}-{params}-HF"
     else:
         # Standard Qwen: Qwen3-VL-4B-Instruct

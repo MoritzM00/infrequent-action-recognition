@@ -7,31 +7,21 @@ from datetime import datetime
 from pathlib import Path
 
 import hydra
-import torch
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from transformers import AutoProcessor
 
-from infreqact.config import resolve_model_name_from_config, resolve_model_path_from_config
-from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
-from infreqact.utils.predictions import save_predictions_jsonl
-
-# vLLM imports are done conditionally inside main() based on cfg.vllm.use_mock
-# This allows switching between real and mock vLLM without code changes
-try:
-    from vllm import LLM, SamplingParams
-except ImportError:
-    # vLLM not installed, will use mock if configured
-    LLM = None
-    SamplingParams = None
-
 import wandb
+from infreqact.config import resolve_model_name_from_config, resolve_model_path_from_config
 from infreqact.data.video_dataset import label2idx
 from infreqact.data.video_dataset_factory import get_video_datasets
 from infreqact.evaluation import evaluate_predictions
+from infreqact.inference import create_llm_engine, create_sampling_params
 from infreqact.inference.base import prepare_inputs_for_vllm
 from infreqact.inference.prompts import PromptBuilder, PromptConfig
+from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
+from infreqact.utils.predictions import save_predictions_jsonl
 from infreqact.utils.wandb import initialize_run_from_config
 
 logger = logging.getLogger(__name__)
@@ -50,20 +40,6 @@ def main(cfg: DictConfig):
 
     logger.info("Configuration:")
     logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
-
-    # Import real or mock vLLM based on configuration
-    if cfg.vllm.get("use_mock", False):
-        from infreqact.inference.mock_vllm import (
-            MockLLM as LLM,
-        )
-        from infreqact.inference.mock_vllm import (
-            MockSamplingParams as SamplingParams,
-        )
-
-        logger.warning("MOCK MODE ENABLED - Using Mock vLLM for debugging")
-
-    else:
-        from vllm import LLM, SamplingParams
 
     # Initialize Weights & Biases
     run = initialize_run_from_config(cfg)
@@ -112,51 +88,9 @@ def main(cfg: DictConfig):
         pin_memory=True,
     )
 
-    # Auto-determine tensor_parallel_size (null -> use all)
-    tensor_parallel_size = cfg.vllm.tensor_parallel_size or torch.cuda.device_count()
-    logger.info(f"Using tensor_parallel_size={tensor_parallel_size}")
-
-    mm_processor_kwargs = OmegaConf.to_object(cfg.vllm.mm_processor_kwargs)
-    # update model-specific overrides
-    mm_processor_kwargs |= cfg.model.get("mm_processor_kwargs", {})
-    logger.info(f"Using mm_processor_kwargs={mm_processor_kwargs}")
-
-    vllm_kwargs = dict(
-        model=checkpoint_path,
-        tensor_parallel_size=tensor_parallel_size,
-        mm_encoder_tp_mode=cfg.vllm.mm_encoder_tp_mode,
-        mm_processor_cache_gb=cfg.vllm.mm_processor_cache_gb,
-        seed=cfg.vllm.seed,
-        dtype=cfg.vllm.dtype,
-        gpu_memory_utilization=cfg.vllm.gpu_memory_utilization,
-        mm_processor_kwargs=mm_processor_kwargs,
-        enable_expert_parallel=cfg.vllm.enable_expert_parallel,
-        limit_mm_per_prompt=cfg.vllm.limit_mm_per_prompt,
-        trust_remote_code=cfg.vllm.trust_remote_code,
-        max_model_len=cfg.vllm.max_model_len,
-        enforce_eager=cfg.vllm.enforce_eager,
-        skip_mm_profiling=cfg.vllm.skip_mm_profiling,
-        async_scheduling=cfg.vllm.async_scheduling,
-    )
-
-    # Add CoT flag and output format for mock mode
-    if cfg.vllm.get("use_mock", False):
-        vllm_kwargs["cot"] = cfg.prompt.cot
-        vllm_kwargs["output_format"] = cfg.prompt.get("output_format", "json")
-
-    llm = LLM(**vllm_kwargs)
-
-    sampling_params = SamplingParams(
-        temperature=cfg.sampling.temperature,
-        max_tokens=cfg.sampling.max_tokens,
-        top_k=cfg.sampling.top_k,
-        top_p=cfg.sampling.get("top_p", 1.0),
-        presence_penalty=cfg.sampling.get("presence_penalty", 0.0),
-        frequency_penalty=cfg.sampling.get("frequency_penalty", 0.0),
-        repetition_penalty=cfg.sampling.get("repetition_penalty", 1.0),
-        seed=cfg.sampling.get("seed", None),
-        stop_token_ids=cfg.sampling.stop_token_ids,
-    )
+    # Initialize vLLM engine and sampling params
+    llm = create_llm_engine(cfg)
+    sampling_params = create_sampling_params(cfg)
 
     # Build prompt from config
     # Extract labels from label2idx (filter out special labels with negative indices)
@@ -276,11 +210,6 @@ def main(cfg: DictConfig):
     logger.info(f"Saved predictions to {predictions_file}")
     logger.info(f"Logged results to W&B: {run.url}")
     wandb.finish()
-
-    if tensor_parallel_size > 1:
-        from vllm.distributed import destroy_distributed_environment
-
-        destroy_distributed_environment()
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="inference_config")
