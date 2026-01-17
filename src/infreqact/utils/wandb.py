@@ -9,6 +9,7 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 
 import wandb
+from infreqact.config import resolve_model_name_from_config
 from infreqact.data.dataset import GenericVideoDataset
 from infreqact.data.video_dataset import label2idx
 
@@ -45,7 +46,7 @@ def create_name_and_tags_from_config(cfg: DictConfig) -> tuple[str, list[str]]:
         base_name = cfg.wandb.name
     else:
         # Create name from config parameters
-        model_info = f"{cfg.model.name}"
+        model_info = resolve_model_name_from_config(cfg.model)
 
         frame_count = cfg.get("num_frames", None)
         model_fps = cfg.get("model_fps", None)
@@ -68,7 +69,7 @@ def create_name_and_tags_from_config(cfg: DictConfig) -> tuple[str, list[str]]:
             tags.append(dataset_name)
 
     # Use model family from config
-    model_family = cfg.model.get("family", cfg.model.name.split("-")[0])
+    model_family = cfg.model.get("family", resolve_model_name_from_config(cfg.model).split("-")[0])
     tags.append(model_family)
 
     if cfg.get("cot", False):

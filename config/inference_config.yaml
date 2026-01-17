@@ -2,7 +2,7 @@ defaults:
   # dataset specified by experiment config
   - vllm: default
   - sampling: qwen3_instruct
-  - model: qwen/instruct
+  - model: qwen
   - prompt: default
   - _self_
   - experiment: debug

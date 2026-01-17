@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from transformers import AutoProcessor
 
+from infreqact.config import resolve_model_name_from_config, resolve_model_path_from_config
 from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
 from infreqact.utils.predictions import save_predictions_jsonl
 
@@ -97,7 +98,7 @@ def main(cfg: DictConfig):
         f"num_workers={cfg.num_workers}"
     )
 
-    checkpoint_path = cfg.model.checkpoint_path
+    checkpoint_path = resolve_model_path_from_config(cfg.model)
     logger.info(f"Loading model and processor: {checkpoint_path}")
     processor = AutoProcessor.from_pretrained(checkpoint_path)
 
@@ -245,14 +246,15 @@ def main(cfg: DictConfig):
 
         # Add timestamp to filename to avoid overwriting previous runs
         timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        predictions_file = predictions_dir / f"{cfg.model.name}_{dataset_name}_{timestamp}.jsonl"
+        model_name = resolve_model_name_from_config(cfg.model)
+        predictions_file = predictions_dir / f"{model_name}_{dataset_name}_{timestamp}.jsonl"
 
         # Get wandb run ID if available
         wandb_run_id = run.id if run else None
 
         save_predictions_jsonl(
             output_path=predictions_file,
-            model_name=cfg.model.name,
+            model_name=model_name,
             dataset_name=dataset_name,
             predictions=predictions,
             config=OmegaConf.to_container(cfg, resolve=True),
