@@ -105,13 +105,26 @@ class GenericVideoDataset(Dataset):
         frames = torch.from_numpy(np.stack(frames)).permute(0, 3, 1, 2).float()
 
         if self.size is not None:
-            # size is (height, width)
-            frames = F.resize(
-                frames,
-                size=self.size,
-                max_size=self.max_size,
-                interpolation=F.InterpolationMode.BILINEAR,
-            )
+            if isinstance(self.size, int):
+                # size is shortest edge target - only downscale, skip if it would upscale
+                h, w = frames.shape[2], frames.shape[3]
+                original_shortest = min(h, w)
+
+                if self.size < original_shortest:
+                    frames = F.resize(
+                        frames,
+                        size=self.size,
+                        max_size=self.max_size,
+                        interpolation=F.InterpolationMode.BILINEAR,
+                    )
+            else:
+                # size is explicit (height, width) tuple - always apply
+                frames = F.resize(
+                    frames,
+                    size=self.size,
+                    max_size=self.max_size,
+                    interpolation=F.InterpolationMode.BILINEAR,
+                )
 
         return {"video": frames}
 
