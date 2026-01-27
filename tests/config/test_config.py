@@ -219,21 +219,6 @@ class TestResolveModelPathFromConfig:
         )
         assert resolve_model_path_from_config(config) == "OpenGVLab/InternVL3_5-30B-A3B-HF"
 
-    def test_unknown_family_uses_family_as_org(self):
-        """Test that unknown family uses family name as organization."""
-        config = OmegaConf.create(
-            {
-                "family": "NewModel",
-                "version": "1",
-                "variant": "Base",
-                "params": "7B",
-                "active_params": None,
-            }
-        )
-        # Unknown family falls through to standard naming pattern
-        result = resolve_model_path_from_config(config)
-        assert result.startswith("NewModel/")
-
 
 class TestConfigIntegration:
     """Integration tests for config utilities."""

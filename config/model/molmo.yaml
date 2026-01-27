@@ -1,0 +1,9 @@
+family: "Molmo"
+version: "2"
+variant: null
+params: "4B"  # Total parameters (e.g., "4B", "8B", "30B")
+
+# MoE-specific (set for MoE models, leave null for standard)
+active_params: null  #  not supported for Molmo
+
+needs_video_metadata: false

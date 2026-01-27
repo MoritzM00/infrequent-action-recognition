@@ -72,11 +72,6 @@ def main(cfg: DictConfig):
         f"Processing {len(dataset)} samples with batch_size={cfg.batch_size}, "
         f"num_workers={cfg.num_workers}"
     )
-
-    checkpoint_path = resolve_model_path_from_config(cfg.model)
-    logger.info(f"Loading model and processor: {checkpoint_path}")
-    processor = AutoProcessor.from_pretrained(checkpoint_path)
-
     # collate fn should be a no-op (just a list of dict as return), pytorch collates over keys by default
     dataloader = DataLoader(
         dataset,
@@ -87,6 +82,13 @@ def main(cfg: DictConfig):
         pin_memory=True,
     )
 
+    if cfg.model.family.lower() == "molmo":
+        raise NotImplementedError("vLLM inference is not yet supported for Molmo models.")
+    checkpoint_path = resolve_model_path_from_config(cfg.model)
+    logger.info(f"Loading model and processor: {checkpoint_path}")
+    processor = AutoProcessor.from_pretrained(
+        checkpoint_path, trust_remote_code=cfg.vllm.trust_remote_code
+    )
     # Initialize vLLM engine and sampling params
     llm = create_llm_engine(cfg)
     sampling_params = create_sampling_params(cfg)

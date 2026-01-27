@@ -9,7 +9,7 @@ num_samples: 10
 
 # Use smaller model for faster testing
 model:
-  params: "2B"
+  params: "4B"
 
 batch_size: 10
 num_workers: 0
