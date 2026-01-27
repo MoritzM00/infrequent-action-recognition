@@ -36,7 +36,7 @@ frequency_penalty: 0.0
 repetition_penalty: 1.0
 
 # Random seed for reproducibility (null = random seed each run)
-seed: 1234
+seed: 0
 
 # Token IDs that trigger generation stop
 stop_token_ids: null
