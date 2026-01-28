@@ -22,6 +22,7 @@ num_frames: 16  # Number of frames to extract per video
 # Inference settings
 batch_size: 32
 num_workers: 8
+prefetch_factor: 2
 
 # Output configuration
 output_dir: "outputs"

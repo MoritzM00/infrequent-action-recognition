@@ -9,9 +9,9 @@ num_samples: null  # Process all samples
 
 # W&B tracking
 wandb:
-  project: "fall-detection-zeroshot-v2"
+  project: "fall-detection-zeroshot-v3"
   name:
   tags: ["zeroshot"]
 
 # Output settings
-output_dir: "outputs/zeroshot-v2"
+output_dir: "outputs/zeroshot-v3"
