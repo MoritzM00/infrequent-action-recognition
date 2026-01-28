@@ -4,17 +4,21 @@ import wandb
 # CONFIGURATION
 # ==========================================
 ENTITY = "moritzm00"
-PROJECT = "fall-detection-zeroshot-v2"
+PROJECT = "fall-detection-zeroshot-v3"
 
-# Mapping run IDs to pretty display names
+# Mapping run IDs to pretty display names (sorted by model size)
 MODEL_NAMES = {
-    "x041dgpd": "Qwen3-VL-2B",
-    "09bv97i6": "Qwen3-VL-4B",
-    "d44rzw7r": "Qwen3-VL-8B",  # old run
-    "3fnfyvx6": "Qwen3-VL-8B (new)",
-    "r8y8mw7j": "InternVL3.5-8B",
-    "44712k11": "Qwen3-VL-32B",
-    "8qrejgdm": "Qwen3-VL-30B-3B",
+    "apwzbguu": "InternVL3.5-2B",
+    "ymkbpqpv": "Qwen3-VL-2B",
+    "d2r9y9uc": "InternVL3.5-4B",
+    "nn63y7fh": "Qwen3-VL-4B",
+    "zwdx66eo": "InternVL3.5-8B",
+    "qtflsj4b": "Qwen3-VL-8B",
+    "fxuyhb0v": "InternVL3.5-14B",
+    "b6990krf": "InternVL3.5-30B-A3B",
+    "6qsunxp4": "Qwen3-VL-30B-A3B",
+    "yzmnu4jo": "Qwen3-VL-32B",
+    "7u9bjiur": "InternVL3.5-38B",
 }
 
 DATASET = "OOPS"
@@ -24,6 +28,9 @@ SPLIT = "cs"
 # so it can be included in the calculation for bold/underline
 SPECIALIZED_MODEL_NAME = "VMAE-K400"
 SPECIALIZED_MODEL_METRICS = [21.4, 47.6, 21.9, 72.9, 85.4, 65.6, 33.1, 96.3, 41.0]
+
+# Columns to apply heatmap coloring (indices: 0=BAcc, 2=F1)
+HEATMAP_COLUMNS = [0, 2, 5, 8]
 
 # ==========================================
 # METRIC MAPPING
@@ -63,7 +70,7 @@ def fetch_run_data(api, run_id):
 
 
 def format_value(val, col_index, stats):
-    """Formats a value with bold/underline based on column stats."""
+    """Formats a value with bold/underline based on column stats, and heatmap for specific columns."""
     if val is None:
         return "--"
 
@@ -75,12 +82,23 @@ def format_value(val, col_index, stats):
     max_val = stats[col_index]["max"]
     second_val = stats[col_index]["second"]
 
+    # Apply bold/underline formatting
     if val_rounded == max_val:
-        return f"\\textbf{{{formatted_str}}}"
+        formatted_str = f"\\textbf{{{formatted_str}}}"
     elif val_rounded == second_val:
-        return f"\\underline{{{formatted_str}}}"
-    else:
-        return formatted_str
+        formatted_str = f"\\underline{{{formatted_str}}}"
+
+    # Apply heatmap coloring for specific columns
+    if col_index in HEATMAP_COLUMNS:
+        min_val = stats[col_index]["min"]
+        # Compute level 0-100 based on position in range
+        if max_val != min_val:
+            level = int(round((val_rounded - min_val) / (max_val - min_val) * 100))
+        else:
+            level = 100
+        formatted_str = f"\\gc{{{level}}}{{{formatted_str}}}"
+
+    return formatted_str
 
 
 def generate_latex():
@@ -121,6 +139,7 @@ def generate_latex():
         stats = {
             "max": unique_vals[0] if len(unique_vals) > 0 else -1,
             "second": unique_vals[1] if len(unique_vals) > 1 else -1,
+            "min": unique_vals[-1] if len(unique_vals) > 0 else 0,
         }
         col_stats.append(stats)
 

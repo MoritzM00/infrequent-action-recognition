@@ -20,7 +20,7 @@ MODEL_TAGS = {
     "qwen": "qwen",
 }
 
-# Limit to N most recent runs per model (set to None to fetch all)
+# Limit to N most recent runs per model
 LATEST_N = 8
 
 # Display names for the table header
@@ -59,16 +59,17 @@ def fetch_ablation_runs(api, model_tag):
         "filters": {
             "$and": [
                 {"tags": ABLATION_TAG},
+                {"tags": "prompt"},
                 {"tags": model_tag},
                 {"config.data.mode": "test"},
             ]
         },
         "order": "-created_at",  # newest first
     }
-    if LATEST_N is not None:
-        query_kwargs["per_page"] = LATEST_N
 
     runs = api.runs(f"{ENTITY}/{PROJECT}", **query_kwargs)
+
+    # latest n runs
 
     results = {}
     for run in runs:
@@ -92,6 +93,8 @@ def fetch_ablation_runs(api, model_tag):
             f1 = f1 * 100
 
         results[key] = {"bacc": bacc, "f1": f1}
+        if len(results) >= LATEST_N:
+            break
 
     return results
 

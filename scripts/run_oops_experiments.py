@@ -1,0 +1,277 @@
+#!/usr/bin/env python3
+"""
+Run experiments on the OOPS dataset for InternVL and Qwen VL models.
+
+This script runs the zeroshot experiment on the OOPS dataset across different
+model sizes sequentially, with a cooldown between runs for vLLM cleanup.
+
+Examples:
+    # Run all InternVL models on oops
+    python scripts/run_oops_experiments.py --model internvl
+
+    # Run all Qwen models on oops
+    python scripts/run_oops_experiments.py --model qwenvl
+
+    # Run both model families
+    python scripts/run_oops_experiments.py --model internvl qwenvl
+
+    # Dry run to preview commands
+    python scripts/run_oops_experiments.py --model internvl --dry-run
+
+    # Run specific sizes only
+    python scripts/run_oops_experiments.py --model internvl --sizes 2B 4B
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import subprocess
+import sys
+import time
+
+# =============================================================================
+# Model Parameter Arrays
+# =============================================================================
+
+# Standard models (non-MoE)
+INTERNVL_STANDARD = ["2B", "4B", "8B", "14B", "38B"]
+QWEN_STANDARD = ["2B", "4B", "8B", "32B"]
+
+# MoE models: {total_params: active_params}
+INTERNVL_MOE: dict[str, str] = {
+    "30B": "A3B",
+    # "241B": "A28B",
+}
+QWEN_MOE: dict[str, str] = {
+    "30B": "A3B",
+    # "235B": "A22B",
+}
+
+# Fixed dataset
+DATASET = "oops"
+EXPERIMENT = "zeroshot"
+
+
+# =============================================================================
+# Command Generation
+# =============================================================================
+
+
+def is_moe_model(model: str, params: str) -> bool:
+    """Check if model is a Mixture of Experts model."""
+    if model == "internvl":
+        return params in INTERNVL_MOE
+    elif model == "qwenvl":
+        return params in QWEN_MOE
+    return False
+
+
+def get_active_params(model: str, params: str) -> str | None:
+    """Get active params for MoE model, or None for standard models."""
+    if model == "internvl":
+        return INTERNVL_MOE.get(params)
+    elif model == "qwenvl":
+        return QWEN_MOE.get(params)
+    return None
+
+
+def generate_command(model: str, params: str) -> str:
+    """
+    Generate the vllm_inference.py command.
+
+    Args:
+        model: Model family ('internvl' or 'qwenvl')
+        params: Model parameter size (e.g., '8B', '30B')
+
+    Returns:
+        Complete command string
+    """
+    cmd_parts = [
+        "python scripts/vllm_inference.py",
+        f"model={model}",
+        f"model.params={params}",
+        f"experiment={EXPERIMENT}",
+        f"dataset/omnifall/video@dataset={DATASET}",
+    ]
+
+    # Add MoE-specific parameters
+    active_params = get_active_params(model, params)
+    if active_params:
+        cmd_parts.append(f"model.active_params={active_params}")
+        cmd_parts.append("vllm.enable_expert_parallel=true")
+
+    return " ".join(cmd_parts)
+
+
+def get_params_for_model(model: str) -> list[str]:
+    """Get all parameter sizes for the given model family (standard + MoE)."""
+    if model == "internvl":
+        return INTERNVL_STANDARD + list(INTERNVL_MOE.keys())
+    elif model == "qwenvl":
+        return QWEN_STANDARD + list(QWEN_MOE.keys())
+    else:
+        raise ValueError(f"Unknown model: {model}")
+
+
+# =============================================================================
+# Execution
+# =============================================================================
+
+
+def execute_runs(
+    models: list[str],
+    sizes: list[str] | None = None,
+    dry_run: bool = False,
+    cooldown: int = 5,
+) -> None:
+    """
+    Execute all runs sequentially.
+
+    Args:
+        models: List of model families ('internvl', 'qwenvl')
+        sizes: Optional list of specific sizes to run
+        dry_run: If True, only print commands without executing
+        cooldown: Seconds to wait between runs
+    """
+    # Build list of (model, params) tuples
+    runs: list[tuple[str, str]] = []
+    for model in models:
+        params_list = get_params_for_model(model)
+        if sizes:
+            params_list = [p for p in params_list if p in sizes]
+        for params in params_list:
+            runs.append((model, params))
+
+    if not runs:
+        logging.error("No models to run! Check your --sizes filter.")
+        logging.info(f"  InternVL standard: {INTERNVL_STANDARD}")
+        logging.info(f"  InternVL MoE: {list(INTERNVL_MOE.keys())}")
+        logging.info(f"  Qwen standard: {QWEN_STANDARD}")
+        logging.info(f"  Qwen MoE: {list(QWEN_MOE.keys())}")
+        sys.exit(1)
+
+    total_runs = len(runs)
+    successful = 0
+    failed = 0
+
+    prefix = "[DRY RUN] " if dry_run else ""
+    logging.info(f"\n{prefix}Running {total_runs} experiments on {DATASET} dataset")
+    logging.info("=" * 60)
+
+    for idx, (model, params) in enumerate(runs, start=1):
+        command = generate_command(model, params)
+
+        action = "Would run" if dry_run else "Running"
+        moe_label = " (MoE)" if is_moe_model(model, params) else ""
+        logging.info(f"\n[{idx}/{total_runs}] {action} {model.upper()} {params}{moe_label}")
+        logging.info(f"  Command: {command}")
+
+        if dry_run:
+            continue
+
+        # Execute command
+        try:
+            subprocess.run(command, shell=True, check=True)
+            logging.info("  Completed successfully")
+            successful += 1
+        except subprocess.CalledProcessError as e:
+            logging.error(f"  Failed with exit code {e.returncode}")
+            failed += 1
+
+        # Cooldown between runs (except after last run)
+        if idx < total_runs:
+            logging.info(f"\n[Cooldown: {cooldown} seconds]")
+            time.sleep(cooldown)
+
+    # Summary
+    logging.info("\n" + "=" * 60)
+    logging.info("Summary")
+    logging.info("=" * 60)
+    logging.info(f"Total runs: {total_runs}")
+
+    if not dry_run:
+        logging.info(f"Successful: {successful}")
+        logging.info(f"Failed: {failed}")
+
+
+# =============================================================================
+# CLI
+# =============================================================================
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description=f"Run experiments on the {DATASET.upper()} dataset",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+Available model sizes:
+  InternVL:
+    Standard: {", ".join(INTERNVL_STANDARD)}
+    MoE:      {", ".join(f"{k} ({v})" for k, v in INTERNVL_MOE.items())}
+
+  Qwen VL:
+    Standard: {", ".join(QWEN_STANDARD)}
+    MoE:      {", ".join(f"{k} ({v})" for k, v in QWEN_MOE.items())}
+
+Examples:
+  python scripts/run_oops_experiments.py --model internvl
+  python scripts/run_oops_experiments.py --model qwenvl
+  python scripts/run_oops_experiments.py --model internvl qwenvl
+  python scripts/run_oops_experiments.py --model internvl --dry-run
+  python scripts/run_oops_experiments.py --model internvl --sizes 2B 4B 30B
+        """,
+    )
+
+    parser.add_argument(
+        "--model",
+        nargs="+",
+        choices=["internvl", "qwenvl"],
+        required=True,
+        help="Model families to run",
+    )
+
+    parser.add_argument(
+        "--sizes",
+        nargs="+",
+        help="Specific model sizes to run (e.g., 2B 4B 8B)",
+    )
+
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview commands without executing",
+    )
+
+    parser.add_argument(
+        "--cooldown",
+        type=int,
+        default=5,
+        help="Seconds to wait between runs for vLLM cleanup (default: 5)",
+    )
+
+    return parser.parse_args()
+
+
+def main() -> None:
+    """Main entry point."""
+    args = parse_args()
+
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+
+    execute_runs(
+        models=args.model,
+        sizes=args.sizes,
+        dry_run=args.dry_run,
+        cooldown=args.cooldown,
+    )
+
+
+if __name__ == "__main__":
+    main()
