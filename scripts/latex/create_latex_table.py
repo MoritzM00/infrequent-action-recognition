@@ -14,6 +14,7 @@ MODEL_NAMES = {
     "nn63y7fh": "Qwen3-VL-4B",
     "zwdx66eo": "InternVL3.5-8B",
     "qtflsj4b": "Qwen3-VL-8B",
+    "gk3eupps": "Keye-VL-1.5-8B",
     "fxuyhb0v": "InternVL3.5-14B",
     "b6990krf": "InternVL3.5-30B-A3B",
     "6qsunxp4": "Qwen3-VL-30B-A3B",
