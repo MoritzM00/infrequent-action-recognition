@@ -7,7 +7,7 @@ conda activate cu129_vllm14
 ```
 3. Install additional dependencies using uv (installed inside colab environment)
 ```shell
-uv pip install vllm==0.14.1 --torch-backend=cu129
+uv pip install vllm==0.15.0 --torch-backend=cu129
 MAX_JOBS=4 uv pip install flash-attn==2.8.3 --no-build-isolation
 uv pip install -r requirements.txt
 uv pip install -r requirements-dev.txt
