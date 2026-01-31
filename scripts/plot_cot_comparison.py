@@ -58,9 +58,9 @@ BASELINE = {
 # STYLE CONFIGURATION
 # ==========================================
 color_map = {
-    "VMAE-K400": "#808080",  # gray for baseline
-    "Instruct": "#4878A8",  # muted blue
-    "Thinking": "#5BA86A",  # muted green
+    "VMAE-K400": "#a6cee3",  # light blue (baseline)
+    "Instruct": "#1f78b4",  # dark blue
+    "Thinking": "#33a02c",  # dark green
 }
 
 # Matplotlib config (paper-ready)
