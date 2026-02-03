@@ -7,6 +7,9 @@ defaults:
 # Full dataset evaluation
 num_samples: null
 
+vllm:
+  mm_processor_cache_gb: 4
+
 # W&B tracking
 wandb:
   project: "fall-detection-fewshot"
