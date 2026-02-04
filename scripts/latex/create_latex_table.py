@@ -8,18 +8,23 @@ PROJECT = "fall-detection-zeroshot-v3"
 
 # Mapping run IDs to pretty display names (sorted by model size)
 MODEL_NAMES = {
-    "apwzbguu": "InternVL3.5-2B",
-    "ymkbpqpv": "Qwen3-VL-2B",
-    "d2r9y9uc": "InternVL3.5-4B",
-    "nn63y7fh": "Qwen3-VL-4B",
-    "zwdx66eo": "InternVL3.5-8B",
-    "qtflsj4b": "Qwen3-VL-8B",
-    "gk3eupps": "Keye-VL-1.5-8B",
-    "fxuyhb0v": "InternVL3.5-14B",
-    "b6990krf": "InternVL3.5-30B-A3B",
-    "6qsunxp4": "Qwen3-VL-30B-A3B",
-    "yzmnu4jo": "Qwen3-VL-32B",
-    "7u9bjiur": "InternVL3.5-38B",
+    # 2B models
+    "nyprnq0t": "InternVL3.5-2B",
+    "u171fyxj": "Qwen3-VL-2B",
+    # 4B models
+    "le9q8a04": "InternVL3.5-4B",
+    "wm6hsn7j": "Qwen3-VL-4B",
+    # 8B models
+    "dofkkc62": "InternVL3.5-8B",
+    "baqlft89": "Qwen3-VL-8B",
+    "oujp2za8": "Keye-VL-1.5-8B",
+    # 14B model
+    "rprpexpt": "InternVL3.5-14B",
+    # 30B / 32B / 38B models
+    "d9z0x4zi": "InternVL3.5-30B-A3B",
+    "sd7o4rli": "Qwen3-VL-30B-A3B",
+    "6kone1tn": "Qwen3-VL-32B",
+    "wycr9tin": "InternVL3.5-38B",
 }
 
 MODEL_NAMES_COT = {

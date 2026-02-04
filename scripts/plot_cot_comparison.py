@@ -16,25 +16,24 @@ PROJECT = "fall-detection-zeroshot-v3"
 DATASET = "OOPS"
 SPLIT = "cs"
 
-# Model sizes to compare
-MODEL_SIZES = ["2B", "4B", "8B", "32B", "30B-A3B"]
+MODEL_SIZES = ["2B", "4B", "8B", "32B"]
 
 # WandB Run IDs for Instruct models
 INSTRUCT_RUN_IDS = {
-    "2B": "ymkbpqpv",
-    "4B": "nn63y7fh",
-    "8B": "qtflsj4b",
-    "32B": "yzmnu4jo",
-    "30B-A3B": "6qsunxp4",
+    "2B": "u171fyxj",
+    "4B": "wm6hsn7j",
+    "8B": "baqlft89",
+    "32B": "6kone1tn",
+    # "30B-A3B": "sd7o4rli",
 }
 
 # WandB Run IDs for Thinking models
 THINKING_RUN_IDS = {
-    "2B": "0fyrvcyv",
-    "4B": "2yzuuwqm",
-    "8B": "j5m9qihw",
-    "32B": "ml3489zj",
-    "30B-A3B": "opzspcfj",
+    "2B": "7e91jfj7",
+    "4B": "96g4jjcr",
+    "8B": "s7b288b5",
+    "32B": "j2qo2hq5",
+    # "30B-A3B": "opzspcfj",
 }
 
 # Metrics to compare
