@@ -22,9 +22,7 @@ def get_video_datasets(
     run: Any | None = None,
     return_individual: bool = False,
     split="cs",
-    size: tuple[int, int] | int | None = None,
-    max_size: int | None = None,
-    seed: int | None = None,
+    **processing_kwargs,  # size, max_size, seed, etc.
 ) -> MultiVideoDataset | dict[str, Any]:
     """
     Create and return video datasets based on configuration.
@@ -141,10 +139,8 @@ def get_video_datasets(
             else None,  # WanFall doesn't use split types
             data_fps=ds_config.get("dataset_fps", None),
             path_format=dataset_config.path_format,
-            max_retries=10,
-            size=size,
-            max_size=max_size,
-            seed=seed,
+            max_retries=4,
+            **processing_kwargs,
         )
 
         if len(dataset) > 0:

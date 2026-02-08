@@ -53,7 +53,8 @@ def main(cfg: DictConfig):
         split=cfg.data.split,
         size=cfg.data.size,
         max_size=cfg.data.max_size,
-        seed=cfg.data.get("seed"),
+        seed=cfg.data.seed,
+        offset=cfg.data.offset,
     )
     for dataset_name, dataset in multi_dataset["individual"].items():
         # TODO: support multiple datasets in vLLM inference

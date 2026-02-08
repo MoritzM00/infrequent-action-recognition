@@ -1,134 +1,151 @@
 import logging
-import time
+import random
 import warnings
+from typing import Literal
 
-from qwen_vl_utils import process_vision_info
-from transformers import AutoModelForImageTextToText, AutoProcessor
+import numpy as np
+from decord import VideoReader, cpu
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
-
 logger = logging.getLogger(__name__)
 
 
-def init_hf_qwen_model(size="2B", attn_implementation="flash_attention_2", cache_dir=".cache"):
-    model_path = f"Qwen/Qwen3-VL-{size}-Instruct"
+def load_video_clip(
+    path: str,
+    start_sec: float = 0.0,
+    end_sec: float = float("inf"),
+    target_fps: float = 8.0,
+    max_frames: int = 16,
+    offset: Literal["random"] | float = 0.0,
+    seed: int | None = None,
+    width: int = -1,
+    height: int = -1,
+    num_threads: int = 0,
+) -> np.ndarray:
+    """Extract a clip from a video with temporal down-sampling and random access.
 
-    model = AutoModelForImageTextToText.from_pretrained(
-        model_path,
-        dtype="bfloat16",
-        device_map="auto",
-        output_loading_info=False,
-        cache_dir=cache_dir,
-        attn_implementation=attn_implementation,
-    )
+    Parameters
+    ----------
+    path : str
+        Path to the video file.
+    start_sec, end_sec : float
+        Temporal boundaries of the segment (in seconds).
+        Default is the entire video (0.0 to inf).
+    target_fps : float
+        Desired output frame rate (e.g. 8 → 8 frames per second).
+    max_frames : int
+        Maximum number of frames to return.  If the segment is shorter than
+        ``max_frames / target_fps`` seconds the actual (smaller) number of
+        frames is returned.
+    offset : "random" or float
+        Controls *where* inside the segment the sub-clip is anchored when the
+        segment is longer than needed.
 
-    processor = AutoProcessor.from_pretrained(model_path)
-    return model, processor
-
-
-def inference(
-    video,
-    prompt,
-    model,
-    processor,
-    max_new_tokens=2048,
-    total_pixels=20480 * 32 * 32,
-    min_pixels=64 * 32 * 32,
-    max_pixels=256 * 32 * 32,
-    max_frames=2048,
-    sample_fps=2,
-    target_fps=2,
-    return_inputs=False,
-):
-    """
-    Perform multimodal inference on input video and text prompt to generate model response.
-
-    Args:
-        video (str or list/tuple): Video input, supports two formats:
-            - str: Path or URL to a video file. The function will automatically read and sample frames.
-            - list/tuple: Pre-sampled list of video frames (PIL.Image or url).
-              In this case, `sample_fps` indicates the frame rate at which these frames were sampled from the original video.
-        prompt (str): User text prompt to guide the model's generation.
-        max_new_tokens (int, optional): Maximum number of tokens to generate. Default is 2048.
-        total_pixels (int, optional): Maximum total pixels for video frame resizing (upper bound). Default is 20480*32*32.
-        min_pixels (int, optional): Minimum total pixels for video frame resizing (lower bound). Default is 16*32*32.
-        sample_fps (int, optional): ONLY effective when `video` is a list/tuple of frames!
-            Specifies the original sampling frame rate (FPS) from which the frame list was extracted.
-            Used for temporal alignment or normalization in the model. Default is 2.
-        target_fps (int, optional): only effective when 'video' is a str
-            Specifies the sampling rate for the model. Default is 2.
-            `max_frames` can be used to limit the number of frames to override this setting.
-
+        * ``0.0``  – start of the segment (default).
+        * ``1.0``  – end of the segment.
+        * Any float in [0, 1] – linearly interpolated position.
+        * ``"random"`` – a random offset is chosen; use *seed* for
+        reproducibility.
+    seed : int | None
+        RNG seed used when ``offset="random"``.
+    width, height : int
+        Resize dimensions passed to decord. -1 means keep original.
+    num_threads : int
+        Number of decoding threads (0 = auto).
 
     Returns
     -------
-        str: Generated text response from the model.
-
-    Notes
-    -----
-        - When `video` is a string (path/URL), `sample_fps` is ignored and will be overridden by the video reader backend.
-        - When `video` is a frame list, `sample_fps` informs the model of the original sampling rate to help understand temporal density.
+    np.ndarray
+        Array of shape ``(N, H, W, 3)`` with ``N <= max_frames``.
     """
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "video": video,
-                    # "total_pixels": total_pixels,
-                    "min_pixels": min_pixels,
-                    "max_pixels": max_pixels,
-                    # "max_frames": max_frames,
-                    # "fps": target_fps,
-                    # "sample_fps": sample_fps,
-                },
-                {"type": "text", "text": prompt},
-            ],
-        },
-    ]
-    text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    # ------------------------------------------------------------------
+    # 1. Open video & read metadata
+    # ------------------------------------------------------------------
+    vr = VideoReader(path, ctx=cpu(0), width=width, height=height, num_threads=num_threads)
 
-    start_time_process_vision = time.perf_counter()
-    image_inputs, video_inputs, video_kwargs = process_vision_info(
-        [messages],
-        return_video_kwargs=True,
-        image_patch_size=processor.image_processor.patch_size,
-        return_video_metadata=True,
-    )
-    end_time_process_vision = time.perf_counter()
-    print(
-        f"Time taken for process_vision_info: {end_time_process_vision - start_time_process_vision:.2f} seconds"
-    )
+    native_fps: float = vr.get_avg_fps()
+    total_frames: int = len(vr)
+    duration: float = total_frames / native_fps
 
-    if video_inputs is not None:
-        video_inputs, video_metadatas = zip(*video_inputs)
-        video_inputs, video_metadatas = list(video_inputs), list(video_metadatas)
-        print(f"Video input shape: {video_inputs[0].shape}")
+    # clamp boundaries
+    start_sec = max(0.0, start_sec)
+    end_sec = min(duration, end_sec)
+    if end_sec <= start_sec:
+        raise ValueError(
+            f"Invalid segment: start_sec={start_sec}, end_sec={end_sec}, "
+            f"video duration={duration:.3f}s"
+        )
+
+    # ------------------------------------------------------------------
+    # 2. Determine how many frames the segment can provide at target_fps
+    # ------------------------------------------------------------------
+    segment_duration = end_sec - start_sec
+    # fence-post: a 1s segment at 2 FPS can provide 3 frames at timestamps [0s, 0.5s, 1s]
+    available_frames = max(1, 1 + int(segment_duration * target_fps))
+    n_frames = min(max_frames, available_frames)
+
+    # ------------------------------------------------------------------
+    # 3. Compute the offset (temporal anchor inside the segment)
+    # ------------------------------------------------------------------
+    # Offset only applies when the segment is long enough to fully provide
+    # max_frames.  If the segment is too short (n_frames < max_frames), we
+    # use every available frame starting from the segment start — no slack.
+    if n_frames < max_frames:
+        clip_start_sec = start_sec
     else:
-        video_metadatas = None
-    inputs = processor(
-        text=[text],
-        images=image_inputs,
-        videos=video_inputs,
-        video_metadata=video_metadatas,
-        **video_kwargs,
-        do_resize=False,
-        return_tensors="pt",
-    )
-    inputs = inputs.to("cuda")
+        clip_duration = (n_frames - 1) / target_fps
+        slack = segment_duration - clip_duration
 
-    start_time_generate = time.perf_counter()
-    output_ids = model.generate(**inputs, max_new_tokens=max_new_tokens)
-    end_time_generate = time.perf_counter()
-    print(f"Time taken for model.generate: {end_time_generate - start_time_generate:.2f} seconds")
+        if slack <= 0:
+            effective_offset = 0.0
+        elif offset == "random":
+            rng = random.Random(seed)
+            effective_offset = rng.random()
+        else:
+            effective_offset = float(max(0.0, min(1.0, offset)))
 
-    generated_ids = [
-        output_ids[len(input_ids) :] for input_ids, output_ids in zip(inputs.input_ids, output_ids)
-    ]
-    output_text = processor.batch_decode(
-        generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=True
+        shift_sec = slack * effective_offset if slack > 0 else 0.0
+        clip_start_sec = start_sec + shift_sec
+
+    # ------------------------------------------------------------------
+    # 4. Map desired timestamps → native frame indices
+    # ------------------------------------------------------------------
+    timestamps = [clip_start_sec + i / target_fps for i in range(n_frames)]
+
+    seen: set[int] = set()
+    indices: list[int] = []
+    for t in timestamps:
+        idx = max(0, min(total_frames - 1, int(round(t * native_fps))))
+        if idx not in seen:
+            seen.add(idx)
+            indices.append(idx)
+
+    # log key parameters for verification
+    logger.debug(
+        f"start_sec={start_sec:.3f}, end_sec={end_sec:.3f}, {offset=} "
+        f"=> clip_start_sec={clip_start_sec:.3f}, timestamps={[f'{ts:.3f}' for ts in timestamps]}"
     )
-    return (output_text[0], inputs) if return_inputs else output_text[0]
+
+    if not indices:
+        raise RuntimeError("Could not compute any valid frame indices.")
+
+    # ------------------------------------------------------------------
+    # 5. Fetch frames via random-access get_batch
+    # ------------------------------------------------------------------
+    frames = vr.get_batch(indices).asnumpy()
+
+    # key metadata for logging/debugging
+    metadata = dict(
+        requested_frames=n_frames,
+        frame_indices=indices,
+        timestamps=timestamps,
+        available_sec=segment_duration,
+        clip_start_sec=clip_start_sec,
+        clip_end_sec=timestamps[-1],
+        shift_sec=shift_sec if n_frames >= max_frames else 0.0,
+    )
+
+    return frames, metadata
 
 
 def prepare_inputs_for_vllm(frames, messages, processor, model_fps=8, needs_video_metadata=True):

@@ -14,9 +14,10 @@ data:
   mode: test
   size: 448
   max_size: null
+  offset: 0.0 # Offset for segment sampling (float 0-1 or "random")
 
 # Global video processing parameters
-model_fps: 8.0  # Target frame rate for video sampling
+model_fps: 7.5  # Target frame rate for video sampling
 num_frames: 16  # Number of frames to extract per video
 
 # Inference settings
