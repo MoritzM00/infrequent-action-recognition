@@ -1,7 +1,8 @@
-"""Configuration dataclass for prompt building."""
+"""Configuration model for prompt building."""
 
-from dataclasses import dataclass
 from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
 
 # Type aliases for variant selection
 RoleVariant = Literal["standard", "specialized", "video_specialized"]
@@ -10,8 +11,7 @@ LabelsVariant = Literal["bulleted", "comma", "grouped", "numbered"]
 DefinitionsVariant = Literal["standard", "extended"]
 
 
-@dataclass
-class PromptConfig:
+class PromptConfig(BaseModel):
     """Configuration for prompt building.
 
     Attributes:
@@ -29,6 +29,8 @@ class PromptConfig:
         labels_variant: Which label formatting variant to use
         definitions_variant: Which definitions component variant to use (None = omit definitions)
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     output_format: Literal["json", "text"] = "json"
     cot: bool = False

@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass
 
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from .prompts import PromptBuilder, PromptConfig
 from .prompts.components import EXEMPLAR_USER_PROMPT
@@ -276,7 +276,8 @@ def create_conversation_builder(
     from falldet.data.exemplar_sampler import ExemplarSampler
     from falldet.data.video_dataset_factory import get_video_datasets
 
-    prompt_config = PromptConfig(labels=list(label2idx.keys()), **cfg.prompt)
+    prompt_dict = OmegaConf.to_container(cfg.prompt, resolve=True)
+    prompt_config = PromptConfig(labels=list(label2idx.keys()), **prompt_dict)
 
     # Sample exemplars if few-shot mode
     exemplars = []

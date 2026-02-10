@@ -1,5 +1,8 @@
 """Tests for the prompts module."""
 
+import pytest
+from pydantic import ValidationError
+
 from falldet.inference.prompts import (
     CoTOutputParser,
     JSONOutputParser,
@@ -24,7 +27,7 @@ LABEL2IDX = {
 
 
 class TestPromptConfig:
-    """Tests for PromptConfig dataclass."""
+    """Tests for PromptConfig model."""
 
     def test_default_config(self):
         """Test default configuration values."""
@@ -100,6 +103,85 @@ class TestPromptConfig:
         )
         assert config.role_variant is None
         assert config.definitions_variant is None
+
+    # ========================================================================
+    # Validation Tests (Pydantic)
+    # ========================================================================
+
+    def test_invalid_role_variant_raises_validation_error(self):
+        """Test that invalid role_variant value raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(role_variant="invalid")
+
+        error = exc_info.value
+        assert "role_variant" in str(error)
+        # Check that error message lists allowed values
+        assert "standard" in str(error) or "Input should be" in str(error)
+
+    def test_invalid_output_format_raises_validation_error(self):
+        """Test that invalid output_format value raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(output_format="invalid")
+
+        error = exc_info.value
+        assert "output_format" in str(error)
+
+    def test_invalid_task_variant_raises_validation_error(self):
+        """Test that invalid task_variant value raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(task_variant="invalid")
+
+        error = exc_info.value
+        assert "task_variant" in str(error)
+
+    def test_invalid_labels_variant_raises_validation_error(self):
+        """Test that invalid labels_variant value raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(labels_variant="invalid")
+
+        error = exc_info.value
+        assert "labels_variant" in str(error)
+
+    def test_invalid_definitions_variant_raises_validation_error(self):
+        """Test that invalid definitions_variant value raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(definitions_variant="invalid")
+
+        error = exc_info.value
+        assert "definitions_variant" in str(error)
+
+    def test_invalid_shot_selection_raises_validation_error(self):
+        """Test that invalid shot_selection value raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(shot_selection="invalid")
+
+        error = exc_info.value
+        assert "shot_selection" in str(error)
+
+    def test_unknown_field_raises_validation_error(self):
+        """Test that unknown field raises ValidationError (extra='forbid')."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(unknown_field="value")
+
+        error = exc_info.value
+        assert "unknown_field" in str(error)
+        assert "Extra inputs are not permitted" in str(error)
+
+    def test_invalid_type_raises_validation_error(self):
+        """Test that invalid type raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(cot=["invalid"])  # Should be bool, not list
+
+        error = exc_info.value
+        assert "cot" in str(error)
+
+    def test_invalid_num_shots_type_raises_validation_error(self):
+        """Test that invalid num_shots type raises ValidationError."""
+        with pytest.raises(ValidationError) as exc_info:
+            PromptConfig(num_shots="four")  # Should be int
+
+        error = exc_info.value
+        assert "num_shots" in str(error)
 
 
 class TestPromptBuilder:
