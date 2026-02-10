@@ -1,0 +1,317 @@
+#!/usr/bin/env python
+"""Generate a LaTeX table for one-at-a-time prompt component ablation results.
+
+Fetches runs from W&B that were produced by ``run_component_ablations.py``
+(tagged with ``ablation`` + ``component``) and renders a single-model table
+with one section per prompt component (Role, Task, Labels, Definitions).
+
+Usage:
+    python scripts/latex/create_component_ablation_table.py
+    python scripts/latex/create_component_ablation_table.py --model-tag qwen --dataset OOPS --split cs
+"""
+
+import argparse
+import logging
+
+import wandb
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# ============================================================================
+# Default configuration
+# ============================================================================
+ENTITY = "moritzm00"
+PROJECT = "fall-detection-zeroshot-v3"
+
+# Baseline config values (must match run_component_ablations.py BASELINE)
+BASELINE = {
+    "output_format": "text",
+    "role_variant": None,
+    "task_variant": "standard",
+    "labels_variant": "bulleted",
+    "definitions_variant": None,
+}
+
+# Component sweeps — defines table sections and row ordering.
+# Each entry: (section_label, config_key, [variant_values])
+# The variant list order determines the row order within each section.
+COMPONENT_SECTIONS = [
+    ("Role", "role_variant", [None, "standard", "specialized", "video_specialized"]),
+    ("Task", "task_variant", ["standard", "extended"]),
+    ("Labels", "labels_variant", ["bulleted", "numbered", "grouped", "comma"]),
+    ("Definitions", "definitions_variant", [None, "standard", "extended"]),
+]
+
+# Display names for variant values in the table
+VARIANT_DISPLAY_NAMES: dict[str | None, str] = {
+    None: "none",
+    "standard": "standard",
+    "specialized": "specialized",
+    "video_specialized": "video spec.",
+    "extended": "extended",
+    "bulleted": "bulleted",
+    "numbered": "numbered",
+    "grouped": "grouped",
+    "comma": "comma",
+}
+
+# Metric keys (suffix after ``{dataset}_{split}_``)
+METRIC_SUFFIXES = [
+    "balanced_accuracy",
+    "macro_f1",
+    "fall_f1",
+    "fallen_f1",
+]
+
+METRIC_DISPLAY_NAMES = {
+    "balanced_accuracy": "BAcc",
+    "macro_f1": "Macro F1",
+    "fall_f1": "Fall F1",
+    "fallen_f1": "Fallen F1",
+}
+
+EXPECTED_RUNS = 10  # unique experiments from run_component_ablations.py
+
+
+# ============================================================================
+# W&B data fetching
+# ============================================================================
+
+
+def _config_key(prompt_config: dict) -> tuple:
+    """Build a hashable key from the prompt config fields we care about."""
+    return (
+        prompt_config.get("output_format"),
+        prompt_config.get("role_variant"),
+        prompt_config.get("task_variant"),
+        prompt_config.get("labels_variant"),
+        prompt_config.get("definitions_variant"),
+    )
+
+
+def fetch_component_ablation_runs(
+    api: wandb.Api,
+    entity: str,
+    project: str,
+    model_tag: str,
+    dataset: str,
+    split: str,
+) -> dict[tuple, dict[str, float | None]]:
+    """Fetch component ablation runs from W&B.
+
+    Returns:
+        Dict keyed by (output_format, role_variant, task_variant,
+        labels_variant, definitions_variant) with values being metric dicts.
+    """
+    metric_keys = [f"{dataset}_{split}_{s}" for s in METRIC_SUFFIXES]
+
+    filters = {
+        "$and": [
+            {"tags": "ablation"},
+            {"tags": "component"},
+            {"tags": model_tag},
+            {"config.data.mode": "test"},
+        ]
+    }
+
+    runs = api.runs(f"{entity}/{project}", filters=filters, order="-created_at")
+
+    results: dict[tuple, dict[str, float | None]] = {}
+    for run in runs:
+        logger.info(f"Processing run: {run.name} ({run.id})")
+        prompt_config = run.config.get("prompt", {})
+        key = _config_key(prompt_config)
+
+        # Skip duplicates — keep the most recent run for each config
+        if key in results:
+            continue
+
+        summary = run.summary
+        metrics: dict[str, float | None] = {}
+        for mk, suffix in zip(metric_keys, METRIC_SUFFIXES):
+            val = summary.get(mk)
+            metrics[suffix] = val * 100 if val is not None else None
+
+        results[key] = metrics
+
+    return results
+
+
+# ============================================================================
+# LaTeX table generation
+# ============================================================================
+
+
+def _make_config_key_for_variant(component_key: str, variant_value) -> tuple:
+    """Build the full config key tuple for a single-component variant.
+
+    Starts from BASELINE and overrides *component_key* with *variant_value*.
+    """
+    cfg = dict(BASELINE)
+    cfg[component_key] = variant_value
+    return (
+        cfg["output_format"],
+        cfg["role_variant"],
+        cfg["task_variant"],
+        cfg["labels_variant"],
+        cfg["definitions_variant"],
+    )
+
+
+def find_best_in_section(
+    data: dict[tuple, dict[str, float | None]],
+    keys: list[tuple],
+) -> dict[str, float | None]:
+    """Find the best (max) value for each metric across a section's rows."""
+    bests: dict[str, float | None] = {}
+    for suffix in METRIC_SUFFIXES:
+        values = [data.get(k, {}).get(suffix) for k in keys]
+        values = [v for v in values if v is not None]
+        bests[suffix] = max(values) if values else None
+    return bests
+
+
+def format_value(val: float | None, best_val: float | None) -> str:
+    """Format a metric value, bolding if it equals the section best."""
+    if val is None:
+        return "--"
+    val_rounded = round(val, 1)
+    formatted = f"{val_rounded:.1f}"
+    if best_val is not None and round(best_val, 1) == val_rounded:
+        return f"\\textbf{{{formatted}}}"
+    return formatted
+
+
+def generate_latex_table(data: dict[tuple, dict[str, float | None]]) -> str:
+    """Generate the full LaTeX table string."""
+    num_metrics = len(METRIC_SUFFIXES)
+    col_spec = "l l" + " r" * num_metrics
+
+    # Header row with metric names
+    metric_headers = " & ".join(f"\\textbf{{{METRIC_DISPLAY_NAMES[s]}}}" for s in METRIC_SUFFIXES)
+
+    rows: list[str] = []
+
+    for sec_idx, (section_label, config_key, variants) in enumerate(COMPONENT_SECTIONS):
+        # Build config keys for all variants in this section
+        section_keys = [_make_config_key_for_variant(config_key, v) for v in variants]
+        bests = find_best_in_section(data, section_keys)
+
+        for row_idx, (variant, cfg_key) in enumerate(zip(variants, section_keys)):
+            # Component column: multirow on first row, empty on subsequent
+            if row_idx == 0:
+                comp_col = f"\\multirow{{{len(variants)}}}{{*}}{{{section_label}}}"
+            else:
+                comp_col = ""
+
+            # Variant display name with baseline marker
+            display_name = VARIANT_DISPLAY_NAMES.get(variant, str(variant))
+            if variant == BASELINE.get(config_key):
+                display_name += "$^{\\ast}$"
+
+            # Metric values
+            run_metrics = data.get(cfg_key, {})
+            metric_cells = []
+            for suffix in METRIC_SUFFIXES:
+                val = run_metrics.get(suffix)
+                metric_cells.append(format_value(val, bests[suffix]))
+
+            metrics_str = " & ".join(metric_cells)
+            rows.append(f"        {comp_col} & {display_name} & {metrics_str} \\\\")
+
+        # Add midrule between sections (but not after the last one)
+        if sec_idx < len(COMPONENT_SECTIONS) - 1:
+            rows.append("        \\midrule")
+
+    rows_str = "\n".join(rows)
+
+    table = f"""\\begin{{table}}[htp]
+    \\centering
+    \\begin{{tabular}}{{@{{}}{col_spec}@{{}}}}
+        \\toprule
+        \\textbf{{Component}} & \\textbf{{Variant}} & {metric_headers} \\\\
+        \\midrule
+
+{rows_str}
+
+        \\bottomrule
+    \\end{{tabular}}
+    \\caption{{\\textbf{{Prompt Component Ablation.}} One-at-a-time ablation over prompt components (role, task instruction, label formatting, and class definitions) with output format fixed to free text. Baseline variants are marked with $\\ast$. Best results per component section are \\textbf{{bolded}}.}}
+    \\label{{tab:component_ablation}}
+\\end{{table}}"""
+
+    return table
+
+
+# ============================================================================
+# CLI
+# ============================================================================
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Generate LaTeX table for prompt component ablation results"
+    )
+    parser.add_argument(
+        "--entity",
+        type=str,
+        default=ENTITY,
+        help=f"W&B entity (default: {ENTITY})",
+    )
+    parser.add_argument(
+        "--project",
+        type=str,
+        default=PROJECT,
+        help=f"W&B project (default: {PROJECT})",
+    )
+    parser.add_argument(
+        "--model-tag",
+        type=str,
+        default="qwen",
+        help="W&B model tag to filter runs (default: qwen)",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="OOPS",
+        help="Dataset name as it appears in W&B metric keys (default: OOPS)",
+    )
+    parser.add_argument(
+        "--split",
+        type=str,
+        default="cs",
+        help="Dataset split (default: cs)",
+    )
+    args = parser.parse_args()
+
+    api = wandb.Api()
+
+    print(f"Fetching component ablation runs from {args.entity}/{args.project}...")
+    print(f"  Model tag: {args.model_tag}")
+    print(f"  Metrics prefix: {args.dataset}_{args.split}_*")
+    print()
+
+    data = fetch_component_ablation_runs(
+        api,
+        entity=args.entity,
+        project=args.project,
+        model_tag=args.model_tag,
+        dataset=args.dataset,
+        split=args.split,
+    )
+
+    print(f"Found {len(data)} unique config runs")
+    if len(data) < EXPECTED_RUNS:
+        print(
+            f"Warning: Expected {EXPECTED_RUNS} runs for a complete component ablation, "
+            f"got {len(data)}. Some rows may show '--'."
+        )
+    print()
+
+    latex_table = generate_latex_table(data)
+    print(latex_table)
+
+
+if __name__ == "__main__":
+    main()

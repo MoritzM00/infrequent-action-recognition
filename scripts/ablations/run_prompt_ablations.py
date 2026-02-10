@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-"""Run prompt ablation experiments with full 2^3 grid."""
+"""Run prompt ablation experiments with full grid."""
 
 import argparse
 import subprocess
 from itertools import product
 
 ABLATION_VARS = {
-    "prompt.include_role": [True, False],
-    "prompt.include_definitions": [True, False],
+    "prompt.role_variant": [None, "standard"],
+    "prompt.definitions_variant": [None, "standard"],
     "prompt.output_format": ["json", "text"],
 }
 
@@ -24,9 +24,9 @@ def build_tags(config: dict) -> list[str]:
     tags = ["ablation", "prompt"]
 
     # Add component tags
-    if config["prompt.include_role"]:
+    if config["prompt.role_variant"]:
         tags.append("role")
-    if config["prompt.include_definitions"]:
+    if config["prompt.definitions_variant"]:
         tags.append("definitions")
 
     # Add format tag
@@ -35,12 +35,22 @@ def build_tags(config: dict) -> list[str]:
     return tags
 
 
-def build_command(config: dict, model: str = "qwen/instruct", params: str = "8B") -> list[str]:
+def _hydra_value(value) -> str:
+    """Convert a Python value to its Hydra CLI representation."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return str(value).lower()
+    return str(value)
+
+
+def build_command(config: dict, model: str = "qwenvl", params: str = "8B") -> list[str]:
     """Build hydra command for a config."""
     cmd = [
         "python",
         "scripts/vllm_inference.py",
         "experiment=zeroshot",
+        "wandb.project=prompt-ablations",
         "data.mode=test",
         f"model={model}",
         f"model.params={params}",
@@ -51,7 +61,7 @@ def build_command(config: dict, model: str = "qwen/instruct", params: str = "8B"
 
     # Add ablation overrides
     for key, value in config.items():
-        val_str = str(value).lower() if isinstance(value, bool) else value
+        val_str = _hydra_value(value)
         cmd.append(f"{key}={val_str}")
 
     # Add descriptive W&B tags - format as ['tag1', 'tag2', ...]
