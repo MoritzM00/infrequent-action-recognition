@@ -45,19 +45,10 @@ METRICS = {
 }
 METRIC_NAMES = list(METRICS.keys())
 
-# Baseline (VMAE-K400)
-BASELINE = {
-    "16-class BAcc": 21.4,
-    "16-class F1": 21.9,
-    "Fall F1": 65.6,
-    "Fallen F1": 41.0,
-}
-
 # ==========================================
 # STYLE CONFIGURATION
 # ==========================================
 color_map = {
-    "VMAE-K400": "#a6cee3",  # light blue (baseline)
     "Instruct": "#1f78b4",  # dark blue
     "Thinking": "#33a02c",  # dark green
 }
@@ -125,31 +116,20 @@ def create_comparison_plot(
     size: str,
     instruct_scores: dict[str, float],
     thinking_scores: dict[str, float],
-    show_baseline: bool = True,
 ) -> plt.Figure:
     """Create a grouped bar chart comparing Instruct vs Thinking for a single model size."""
     fig, ax = plt.subplots(figsize=(8, 5))
 
     x = np.arange(len(METRIC_NAMES))
-    width = 0.25  # Narrower bars to fit 3 groups
+    width = 0.3
 
     # Get scores as lists
-    baseline_vals = [BASELINE.get(m, 0) or 0 for m in METRIC_NAMES]
     instruct_vals = [instruct_scores.get(m, 0) or 0 for m in METRIC_NAMES]
     thinking_vals = [thinking_scores.get(m, 0) or 0 for m in METRIC_NAMES]
 
-    # Create bars (baseline, instruct, thinking)
-    if show_baseline:
-        ax.bar(
-            x - width,
-            baseline_vals,
-            width,
-            label="VMAE-K400",
-            color=color_map["VMAE-K400"],
-            edgecolor="black",
-        )
+    # Create bars (instruct, thinking)
     ax.bar(
-        x,
+        x - width / 2,
         instruct_vals,
         width,
         label="Zero-Shot",
@@ -157,7 +137,7 @@ def create_comparison_plot(
         edgecolor="black",
     )
     ax.bar(
-        x + width,
+        x + width / 2,
         thinking_vals,
         width,
         label="Zero-Shot CoT",
@@ -165,20 +145,20 @@ def create_comparison_plot(
         edgecolor="black",
     )
 
-    # Add improvement annotations
+    # Add improvement annotations (percentage points)
     for i, (inst, think) in enumerate(zip(instruct_vals, thinking_vals)):
         if inst > 0 and think is not None:
-            improvement = ((think - inst) / inst) * 100
-            sign = "+" if improvement >= 0 else ""
+            diff = think - inst
+            sign = "+" if diff >= 0 else ""
             ax.annotate(
-                f"{sign}{improvement:.1f}\\%",
-                xy=(x[i] + width, think),
+                f"{sign}{diff:.1f} pp",
+                xy=(x[i] + width / 2, think),
                 xytext=(0, 5),
                 textcoords="offset points",
                 ha="center",
                 va="bottom",
                 fontsize=9,
-                color="black" if improvement >= 0 else "red",
+                color="black" if diff >= 0 else "red",
             )
 
     # Axes & grid
@@ -188,14 +168,13 @@ def create_comparison_plot(
     ax.set_xticklabels(METRIC_NAMES)
 
     # Set y-axis limits
-    all_vals = instruct_vals + thinking_vals + list(BASELINE.values())
+    all_vals = instruct_vals + thinking_vals
     ax.set_ylim(0, max(v for v in all_vals if v is not None) * 1.2)
 
     ax.grid(axis="y", linestyle="--", linewidth=0.8, alpha=0.6)
 
     # Legend
     legend_handles = [
-        Patch(facecolor=color_map["VMAE-K400"], edgecolor="black", label="VMAE-K400"),
         Patch(facecolor=color_map["Instruct"], edgecolor="black", label="Zero-Shot"),
         Patch(facecolor=color_map["Thinking"], edgecolor="black", label="Zero-Shot CoT"),
     ]
@@ -204,7 +183,7 @@ def create_comparison_plot(
         frameon=False,
         loc="upper center",
         bbox_to_anchor=(0.5, 1.1),
-        ncol=3,
+        ncol=2,
     )
 
     plt.tight_layout()
@@ -260,8 +239,7 @@ def generate_latex_code(output_paths: list[Path]) -> str:
     latex_parts.append(r"")
     latex_parts.append(
         r"    \caption{Comparison of Qwen3-VL models with Instruct vs Thinking (Chain-of-Thought) prompting. "
-        r"Annotations show relative improvement from Instruct to Thinking. "
-        r"Gray bars indicate VMAE-K400 baseline.}"
+        r"Annotations show improvement in percentage points from Instruct to Thinking.}"
     )
     latex_parts.append(r"    \label{fig:cot_comparison}")
     latex_parts.append(r"\end{figure}")
