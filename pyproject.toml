@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "infreqact"
+name = "falldet"
 version = "0.0.1"
 description = "Infrequent Action Recognition using MLLMs"
 authors = [
@@ -16,12 +16,12 @@ dependencies = []
 
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/infreqact"]
+packages = ["src/falldet"]
 
 
 [tool.ruff]
 line-length = 100
-extend-exclude = ["src/infreqact/__init__.py"]
+extend-exclude = ["src/falldet/__init__.py"]
 target-version = "py311"
 
 [tool.ruff.lint.extend-per-file-ignores]
