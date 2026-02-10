@@ -12,18 +12,18 @@ from tqdm import tqdm
 from transformers import AutoProcessor
 
 import wandb
-from infreqact.config import resolve_model_name_from_config, resolve_model_path_from_config
-from infreqact.data.video_dataset import label2idx
-from infreqact.data.video_dataset_factory import get_video_datasets
-from infreqact.evaluation import evaluate_predictions
-from infreqact.inference import (
+from falldet.config import resolve_model_name_from_config, resolve_model_path_from_config
+from falldet.data.video_dataset import label2idx
+from falldet.data.video_dataset_factory import get_video_datasets
+from falldet.evaluation import evaluate_predictions
+from falldet.inference import (
     create_conversation_builder,
     create_llm_engine,
     create_sampling_params,
 )
-from infreqact.utils.logging import reconfigure_logging_after_wandb, setup_logging
-from infreqact.utils.predictions import save_predictions_jsonl
-from infreqact.utils.wandb import initialize_run_from_config
+from falldet.utils.logging import reconfigure_logging_after_wandb, setup_logging
+from falldet.utils.predictions import save_predictions_jsonl
+from falldet.utils.wandb import initialize_run_from_config
 
 logger = logging.getLogger(__name__)
 

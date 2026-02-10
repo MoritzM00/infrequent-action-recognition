@@ -4,8 +4,8 @@ from collections import OrderedDict
 import pandas as pd
 import torch
 
-from infreqact.data.dataset import GenericVideoDataset
-from infreqact.data.hf_utils import resolve_annotations_file, resolve_split_file
+from falldet.data.dataset import GenericVideoDataset
+from falldet.data.hf_utils import resolve_annotations_file, resolve_split_file
 
 label2idx = {
     "walk": 0,

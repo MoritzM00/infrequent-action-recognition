@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from infreqact.metrics.base import compute_metrics
+from falldet.metrics.base import compute_metrics
 
 
 class TestComputeMetrics:

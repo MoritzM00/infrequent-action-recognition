@@ -1,6 +1,6 @@
 """Tests for the prompts module."""
 
-from infreqact.inference.prompts import (
+from falldet.inference.prompts import (
     CoTOutputParser,
     JSONOutputParser,
     KeywordOutputParser,

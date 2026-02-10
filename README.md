@@ -1,9 +1,9 @@
-# Evaluation of Multimodal Large Language Models for Infrequent Action Recognition
+# Video-based Fall Detection using Multimodal Large Language Models
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/) [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://docs.astral.sh/ruff/) [![vLLM](https://img.shields.io/badge/inference-vLLM-1e3a5f?logo=python)](https://docs.vllm.ai) [![Hydra](https://img.shields.io/badge/config-Hydra-89b8cd)](https://hydra.cc) [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://pre-commit.com)
 
 ## Project Overview
-This project provides code for the master thesis on evaluation of Multimodal Large Language Models (MLLMs) for Infrequent Action Recognition, specifically the detection of Human Falls and the subsequent state of being fallen. We also evaluate MLLMs jointly with general Human Activity classes like `walking` or `standing` to assess models on Human Activity Recognition (HAR).
+This project provides code for the master thesis on Video-based Fall Detection using Multimodal Large Language Models (MLLMs), specifically the detection of Human Falls and the subsequent state of being fallen. We also evaluate MLLMs jointly with general Human Activity classes like `walking` or `standing` to assess models on Human Activity Recognition (HAR).
 
 The main experiments we conduct are:
 - Zero-shot: No exemplars are given, just the task instruction
@@ -28,7 +28,7 @@ python scripts/vllm_inference.py experiment=fewshot  model=qwenvl model.params=4
 ```
 To run CoT experiments with the default model, execute
 ```shell
-python scripts/vllm_inference.py experiment=cot
+python scripts/vllm_inference.py experiment=zeroshot_cot
 ```
 
 
@@ -71,7 +71,7 @@ conda activate cu129_vllm15
 ```
 3. Install additional dependencies using uv (installed inside colab environment)
 ```shell
-uv pip install vllm==0.15.0 --torch-backend=cu129
+uv pip install vllm==0.15.1 --torch-backend=cu129
 MAX_JOBS=4 uv pip install flash-attn==2.8.3 --no-build-isolation
 uv pip install -r requirements.txt
 uv pip install -r requirements-dev.txt

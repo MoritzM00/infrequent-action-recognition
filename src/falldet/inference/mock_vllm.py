@@ -13,7 +13,7 @@ import logging
 import random
 from typing import Any
 
-from infreqact.data.video_dataset import label2idx
+from falldet.data.video_dataset import label2idx
 
 logger = logging.getLogger(__name__)
 

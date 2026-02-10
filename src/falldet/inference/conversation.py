@@ -273,8 +273,8 @@ def create_conversation_builder(
     Returns:
         Initialized ConversationBuilder with cached exemplars
     """
-    from infreqact.data.exemplar_sampler import ExemplarSampler
-    from infreqact.data.video_dataset_factory import get_video_datasets
+    from falldet.data.exemplar_sampler import ExemplarSampler
+    from falldet.data.video_dataset_factory import get_video_datasets
 
     prompt_config = PromptConfig(labels=list(label2idx.keys()), **cfg.prompt)
 

@@ -13,7 +13,7 @@ from sklearn.metrics import (
     recall_score,
 )
 
-from infreqact.data.video_dataset import idx2label, label2idx
+from falldet.data.video_dataset import idx2label, label2idx
 
 
 def compute_metrics(

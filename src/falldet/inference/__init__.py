@@ -1,10 +1,10 @@
-from infreqact.inference.conversation import (
+from falldet.inference.conversation import (
     ConversationBuilder,
     ConversationData,
     VideoWithMetadata,
     create_conversation_builder,
 )
-from infreqact.inference.engine import create_llm_engine, create_sampling_params
+from falldet.inference.engine import create_llm_engine, create_sampling_params
 
 from .base import load_video_clip
 

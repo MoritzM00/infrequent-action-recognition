@@ -13,12 +13,12 @@ from typing import Any
 import numpy as np
 
 import wandb
-from infreqact.data.dataset import GenericVideoDataset
-from infreqact.evaluation.subgroup import perform_subgroup_evaluation
-from infreqact.evaluation.visual import visualize_evaluation_results
-from infreqact.metrics.base import compute_metrics
-from infreqact.utils.latex import format_subgroup_latex_table
-from infreqact.utils.wandb import log_confusion_matrix, log_videos_with_predictions
+from falldet.data.dataset import GenericVideoDataset
+from falldet.evaluation.subgroup import perform_subgroup_evaluation
+from falldet.evaluation.visual import visualize_evaluation_results
+from falldet.metrics.base import compute_metrics
+from falldet.utils.latex import format_subgroup_latex_table
+from falldet.utils.wandb import log_confusion_matrix, log_videos_with_predictions
 
 logger = logging.getLogger(__name__)
 

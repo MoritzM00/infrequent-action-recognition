@@ -6,7 +6,7 @@ import imageio.v3 as iio
 import numpy as np
 import pytest
 
-from infreqact.inference.base import load_video_clip
+from falldet.inference.base import load_video_clip
 
 # ---------------------------------------------------------------------------
 # Synthetic video fixture

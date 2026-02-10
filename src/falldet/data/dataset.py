@@ -8,7 +8,7 @@ import torchvision.transforms.v2 as v2
 from torch.utils.data import Dataset
 from torchvision import tv_tensors
 
-from infreqact.inference import load_video_clip
+from falldet.inference import load_video_clip
 
 logger = logging.getLogger(__name__)
 

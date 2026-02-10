@@ -4,8 +4,8 @@ from typing import Any
 import numpy as np
 
 import wandb
-from infreqact.data.dataset import GenericVideoDataset
-from infreqact.metrics.subgroup import compute_subgroup_metrics, print_subgroup_summary
+from falldet.data.dataset import GenericVideoDataset
+from falldet.metrics.subgroup import compute_subgroup_metrics, print_subgroup_summary
 
 from .visual import visualize_subgroup_results
 

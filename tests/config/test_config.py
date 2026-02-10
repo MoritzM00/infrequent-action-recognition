@@ -3,7 +3,7 @@
 import pytest
 from omegaconf import OmegaConf
 
-from infreqact.config import resolve_model_name_from_config, resolve_model_path_from_config
+from falldet.config import resolve_model_name_from_config, resolve_model_path_from_config
 
 # --- Fixtures ---
 

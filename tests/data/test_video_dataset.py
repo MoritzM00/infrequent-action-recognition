@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from infreqact.data.video_dataset import OmnifallVideoDataset
+from falldet.data.video_dataset import OmnifallVideoDataset
 
 
 @pytest.fixture(scope="module")

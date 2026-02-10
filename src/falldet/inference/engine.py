@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import torch
 from omegaconf import DictConfig, OmegaConf
 
-from infreqact.config import is_moe_model, resolve_model_path_from_config
+from falldet.config import is_moe_model, resolve_model_path_from_config
 
 if TYPE_CHECKING:
     from vllm import LLM, SamplingParams
@@ -36,7 +36,7 @@ def create_llm_engine(cfg: DictConfig) -> "LLM":
     # Import real or mock vLLM based on configuration
     use_mock = cfg.vllm.get("use_mock", False)
     if use_mock:
-        from infreqact.inference.mock_vllm import MockLLM as LLM
+        from falldet.inference.mock_vllm import MockLLM as LLM
 
         logger.warning("MOCK MODE ENABLED - Using Mock vLLM for debugging")
     else:
@@ -107,7 +107,7 @@ def create_sampling_params(cfg: DictConfig) -> "SamplingParams":
     """
     # Import real or mock SamplingParams based on configuration
     if cfg.vllm.get("use_mock", False):
-        from infreqact.inference.mock_vllm import MockSamplingParams as SamplingParams
+        from falldet.inference.mock_vllm import MockSamplingParams as SamplingParams
     else:
         from vllm import SamplingParams
 

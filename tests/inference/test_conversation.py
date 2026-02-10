@@ -2,13 +2,13 @@
 
 import torch
 
-from infreqact.inference.conversation import (
+from falldet.inference.conversation import (
     ConversationBuilder,
     ConversationData,
     VideoWithMetadata,
 )
-from infreqact.inference.prompts import PromptConfig
-from infreqact.inference.prompts.parsers import JSONOutputParser, KeywordOutputParser
+from falldet.inference.prompts import PromptConfig
+from falldet.inference.prompts.parsers import JSONOutputParser, KeywordOutputParser
 
 # Test data
 LABEL2IDX = {

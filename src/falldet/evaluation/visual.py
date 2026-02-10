@@ -10,7 +10,7 @@ from typing import Any
 
 import plotext as plt
 
-from infreqact.data.video_dataset import idx2label
+from falldet.data.video_dataset import idx2label
 
 
 def visualize_evaluation_results(

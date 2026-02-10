@@ -9,9 +9,9 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 
 import wandb
-from infreqact.config import resolve_model_name_from_config
-from infreqact.data.dataset import GenericVideoDataset
-from infreqact.data.video_dataset import label2idx
+from falldet.config import resolve_model_name_from_config
+from falldet.data.dataset import GenericVideoDataset
+from falldet.data.video_dataset import label2idx
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +172,7 @@ def load_run_from_wandb(
         FileNotFoundError: If no JSONL predictions file is found in the run
     """
     # Import here to avoid circular import
-    from infreqact.utils.predictions import load_predictions_jsonl
+    from falldet.utils.predictions import load_predictions_jsonl
 
     entity = entity or os.getenv("WANDB_ENTITY")
     project = project or os.getenv("WANDB_PROJECT")

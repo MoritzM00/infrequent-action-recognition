@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from infreqact.data.exemplar_sampler import ExemplarSampler
+from falldet.data.exemplar_sampler import ExemplarSampler
 
 
 class MockDataset:
