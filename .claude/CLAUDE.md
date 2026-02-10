@@ -5,7 +5,7 @@ See `README.md` for project overview, important commands and quickstart guide.
 ## Project Structure
 
 ```
-infrequent-action-recognition/
+fall-detection-mllm/
 ├── config/                          # Hydra configuration files
 │   ├── inference_config.yaml        # Main config (composes groups below)
 │   ├── dataset/                     # Dataset + split definitions (omnifall, wanfall, combined)
@@ -24,7 +24,7 @@ infrequent-action-recognition/
 │   ├── ablations/                   # Ablation runners
 │   └── latex/                       # LaTeX table generation
 │
-├── src/infreqact/                   # Main Python package
+├── src/falldet/                   # Main Python package
 │   ├── data/                        # Dataset handling + exemplar sampling
 │   ├── inference/                   # Inference engine + prompt building
 │   │   ├── base.py                  # Shared inference interfaces/utilities
