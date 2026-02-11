@@ -15,7 +15,6 @@ skip_mm_profiling: false
 enable_prefix_caching: true  # Enable automatic prefix caching for shared prompts
 
 mm_processor_kwargs:
-  do_resize: false
   do_sample_frames: false
 
 # NOTE: limit_mm_per_prompt.video is computed dynamically in engine.py

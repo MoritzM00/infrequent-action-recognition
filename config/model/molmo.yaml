@@ -12,3 +12,5 @@ needs_video_metadata: true
 mm_processor_kwargs:
   do_resize: true
   use_fast: true
+
+# note: molmo needs Channels last format as input tensors for video, but dataset returns channels first

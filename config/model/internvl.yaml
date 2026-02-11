@@ -9,3 +9,6 @@ params: 1B # 1B, 2B, 4B, 8B, 14B, 38B
 active_params: null
 
 needs_video_metadata: false
+
+mm_processor_kwargs:
+  do_resize: false

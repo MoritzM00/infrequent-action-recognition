@@ -10,3 +10,6 @@ params: 4B  # Total parameters (e.g., "4B", "8B", "30B")
 active_params: null  # e.g., "A3B" for MoE - if set, model is treated as MoE
 
 needs_video_metadata: true
+
+mm_processor_kwargs:
+  do_resize: false
