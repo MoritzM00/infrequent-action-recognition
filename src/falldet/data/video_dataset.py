@@ -1,6 +1,7 @@
 import logging
 from collections import OrderedDict
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -54,7 +55,6 @@ class OmnifallVideoDataset(GenericVideoDataset):
         size=None,
         max_size=None,
         seed=0,
-        offset="random",
         **kwargs,
     ):
         """
@@ -86,7 +86,6 @@ class OmnifallVideoDataset(GenericVideoDataset):
             fast=fast,
             size=size,
             max_size=max_size,
-            offset=offset,
             seed=seed,
         )
         self.dataset_name = dataset_name
@@ -184,6 +183,35 @@ class OmnifallVideoDataset(GenericVideoDataset):
             video_root=self.video_root, video_path=rel_path, ext=self.ext
         )
 
+    def get_random_offset(self, length, target_interval, idx, fps, start=0):
+        """
+        Get random offset for temporal segment sampling.
+        Ensures we sample within the annotated segment boundaries.
+
+        Uses index-based seeding for reproducibility across DataLoader workers.
+        """
+        segment = self.video_segments[idx]
+        segment_start_frame = int(segment["start"] * fps)
+        segment_end_frame = int(segment["end"] * fps)
+        segment_frames = segment_end_frame - segment_start_frame
+
+        required_frames = self.vid_frame_count * target_interval
+
+        if segment_frames <= required_frames:
+            # Segment is too short, start from beginning of segment
+            return segment_start_frame
+        else:
+            # Random offset within the segment
+            max_offset = segment_frames - required_frames
+            if self.seed is not None:
+                # Use index-based seeding: same idx always produces same offset
+                idx_rng = np.random.default_rng(self.seed + idx)
+                random_offset = idx_rng.integers(0, int(max_offset) + 1, dtype=int)
+            else:
+                # No seed: truly random offset each time (for training augmentation)
+                random_offset = np.random.randint(0, int(max_offset) + 1)
+            return segment_start_frame + random_offset
+
     def load_item(self, idx):
         """Load video segment with temporal boundaries."""
         segment, label = self._id2label(idx)
@@ -191,7 +219,8 @@ class OmnifallVideoDataset(GenericVideoDataset):
         video_path = self.format_path(segment["video_path"])
 
         # Load frames from the video
-        frames = self.load_video(video_path, start_sec=segment["start"], end_sec=segment["end"])
+        frames = self.load_video(video_path, idx)
+        frames = np.array(frames)
 
         # Transform frames
         inputs = self.transform_frames(frames)

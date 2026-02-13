@@ -8,7 +8,7 @@ model_family: ${model.family}
 role_variant: standard
 task_variant: standard
 labels_variant: bulleted
-definitions_variant: extended
+definitions_variant: null
 
 # Few-shot settings
 num_shots: 5

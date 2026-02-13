@@ -8,23 +8,18 @@ PROJECT = "fall-detection-zeroshot-v3"
 
 # Mapping run IDs to pretty display names (sorted by model size)
 MODEL_NAMES = {
-    # 2B models
-    "zenfjvo0": "InternVL3.5-2B",
-    "ygm0hz9l": "Qwen3-VL-2B",
-    # 4B models
-    "wxi2br23": "InternVL3.5-4B",
-    "zf5k1ff1": "Qwen3-VL-4B",
-    # 8B models
-    "gwuwabdq": "InternVL3.5-8B",
-    "6vn8a27q": "Qwen3-VL-8B",
-    "gbwdogto": "Keye-VL-1.5-8B",
-    # 14B model
-    "f6cm7jwy": "InternVL3.5-14B",
-    # 30B / 32B / 38B models
-    "b706gv8u": "InternVL3.5-30B-A3B",
-    "bqhknra3": "Qwen3-VL-30B-A3B",
-    "s4a6e1u2": "InternVL3.5-38B",
-    "y72n8y63": "Qwen3-VL-32B",
+    "apwzbguu": "InternVL3.5-2B",
+    "ymkbpqpv": "Qwen3-VL-2B",
+    "d2r9y9uc": "InternVL3.5-4B",
+    "nn63y7fh": "Qwen3-VL-4B",
+    "zwdx66eo": "InternVL3.5-8B",
+    "qtflsj4b": "Qwen3-VL-8B",
+    "gk3eupps": "Keye-VL-1.5-8B",
+    "fxuyhb0v": "InternVL3.5-14B",
+    "b6990krf": "InternVL3.5-30B-A3B",
+    "6qsunxp4": "Qwen3-VL-30B-A3B",
+    "yzmnu4jo": "Qwen3-VL-32B",
+    "7u9bjiur": "InternVL3.5-38B",
 }
 
 MODEL_NAMES_COT = {
@@ -34,7 +29,6 @@ MODEL_NAMES_COT = {
     "opzspcfj": "Qwen3-VL-30B-A3B",
     "ml3489zj": "Qwen3-VL-32B",
 }
-
 DATASET = "OOPS"
 SPLIT = "cs"
 
