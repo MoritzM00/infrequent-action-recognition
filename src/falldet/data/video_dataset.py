@@ -197,6 +197,17 @@ class OmnifallVideoDataset(GenericVideoDataset):
         # Use ceil for start to ensure we don't start before segment boundary
         segment_start_frame = math.ceil(segment["start"] * fps)
         segment_end_frame = int(segment["end"] * fps)
+
+        # Handle very short segments where rounding can cause issues
+        if segment_end_frame < segment_start_frame:
+            # Segment is < 1 frame: use a single frame at segment midpoint
+            midpoint = (segment["start"] + segment["end"]) / 2
+            segment_start_frame = int(midpoint * fps)
+            segment_end_frame = segment_start_frame + 1
+        elif segment_end_frame == segment_start_frame:
+            # Segment is exactly at frame boundary: ensure at least 1 frame
+            segment_end_frame = segment_start_frame + 1
+
         segment_frames = segment_end_frame - segment_start_frame
 
         # Compute temporal span of the clip in native frames
@@ -207,9 +218,9 @@ class OmnifallVideoDataset(GenericVideoDataset):
         logger.debug(
             f"Segment {idx}: requesting {required_frames} out of {segment_end_frame - segment_start_frame} frames"
         )
-        logger.debug(f"Segment starts at {segment['start']} and ends at {segment['end']} ")
         if segment_frames <= required_frames:
             # Segment is too short, start from beginning of segment
+            # logger.warning("Segment too short. This clip may overlap into the next segment.")
             return segment_start_frame
         else:
             # Random offset within the segment
@@ -221,9 +232,6 @@ class OmnifallVideoDataset(GenericVideoDataset):
             else:
                 # No seed: truly random offset each time (for training augmentation)
                 random_offset = np.random.randint(0, int(max_offset) + 1)
-
-            logger.debug(f"Segment {idx}: max_offset={max_offset}, random_offset={random_offset}")
-
             return segment_start_frame + random_offset
 
     def load_item(self, idx):

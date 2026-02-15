@@ -100,7 +100,7 @@ class GenericVideoDataset(Dataset):
                 if retries >= self.max_retries:
                     logging.error(f"Error loading video at index {idx}: {str(e)}")
 
-        raise RuntimeError(f"Failed to load a valid video after {self.max_retries} attempts")
+        raise RuntimeError(f"Failed to load video at index {idx} after {self.max_retries} attempts")
 
     def transform_frames(self, frames):
         # frames is a ndarrays (T, H, W, C)
@@ -118,7 +118,6 @@ class GenericVideoDataset(Dataset):
                         interpolation=v2.InterpolationMode.BILINEAR,
                     ),
                     v2.CenterCrop(self.size),
-                    v2.ToDtype(torch.float32),
                 ]
             )
             frames = transform(frames)
@@ -152,15 +151,12 @@ class GenericVideoDataset(Dataset):
 
                 # random start (in frames) for augmentation
                 begin_frame = self.get_random_offset(frame_cnt, 1, idx, fps) if frame_cnt else 0
-                logger.debug(f"start decoding at frame {begin_frame}")
+                # logger.debug(f"Requesting first frame at {begin_frame} (time={begin_frame/fps:.3f}s)")
 
                 # Calculate desired timestamps
                 desired_timestamps = [
                     (begin_frame / fps) + n / self.target_fps for n in range(self.vid_frame_count)
                 ]
-                logger.debug(
-                    f"start timestamp: {desired_timestamps[0]:.3f}s, end timestamp: {desired_timestamps[-1]:.3f}s"
-                )
 
                 desired_pts = [int(ts / tb) for ts in desired_timestamps]
 
@@ -193,11 +189,12 @@ class GenericVideoDataset(Dataset):
                     prev = f
 
                 if not frames:
-                    logging.warning(f"{path}: fallback to slow loader")
+                    logging.warning(f"{idx}: fallback to slow loader")
                     return self.load_video_slow(path, idx)
 
                 # Better frame padding strategy
                 if len(frames) < self.vid_frame_count:
+                    # logger.debug(f"Padding frames from {len(frames)} to {self.vid_frame_count}")
                     if len(frames) > 0:
                         # Repeat last frame instead of cycling
                         last_frame = frames[-1]

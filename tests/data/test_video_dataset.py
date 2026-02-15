@@ -124,3 +124,14 @@ def test_decode_within_boundaries(test_omnifall_video_dataset):
     assert "video" in item, "Dataset should return video frames"
     assert "label" in item, "Dataset should return label"
     assert "start_time" in item, "Dataset should return segment metadata"
+
+
+def test_load_very_short_video(test_omnifall_video_dataset):
+    """Test to load video at index 304 which is very short."""
+    dataset = test_omnifall_video_dataset
+    item = dataset[304]
+    assert "video" in item, "Dataset should return video frames"
+    frames = item["video"]
+    assert frames.shape[0] == dataset.vid_frame_count, (
+        f"Expected {dataset.vid_frame_count} frames after padding, but got {frames.shape[0]}"
+    )
