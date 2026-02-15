@@ -4,7 +4,8 @@ import warnings
 from typing import Literal
 
 import numpy as np
-from decord import VideoReader, cpu
+import torch
+from video_reader import PyVideoReader
 
 warnings.filterwarnings("ignore", category=FutureWarning, module="transformers")
 logger = logging.getLogger(__name__)
@@ -18,9 +19,10 @@ def load_video_clip(
     max_frames: int = 16,
     offset: Literal["random"] | float = 0.0,
     seed: int | None = None,
-    width: int = -1,
-    height: int = -1,
+    size=None,
     num_threads: int = 0,
+    return_torch_tensor: bool = True,
+    repeat_last=True,
 ) -> tuple[np.ndarray, dict]:
     """Extract a clip from a video with temporal down-sampling and random access.
 
@@ -65,7 +67,21 @@ def load_video_clip(
     # ------------------------------------------------------------------
     # 1. Open video & read metadata
     # ------------------------------------------------------------------
-    vr = VideoReader(path, ctx=cpu(0), width=width, height=height, num_threads=num_threads)
+    resize_params = dict()
+    match size:
+        case int():
+            resize_params["resize_shorter_side"] = size
+        case tuple():
+            assert len(size) == 2, "invalid size tuple, should be tuple[int, int]"
+            target_height, target_width = size
+            resize_params["target_width"] = target_width
+            resize_params["target_height"] = target_height
+        case None:
+            pass
+        case _:
+            raise ValueError("Invalid size parameter. Expected int, tuple[int, int], or None.")
+
+    vr = PyVideoReader(path, threads=num_threads, **resize_params)
 
     native_fps: float = vr.get_avg_fps()
     total_frames: int = len(vr)
@@ -137,7 +153,13 @@ def load_video_clip(
     # ------------------------------------------------------------------
     # 5. Fetch frames via random-access get_batch
     # ------------------------------------------------------------------
-    frames = vr.get_batch(indices).asnumpy()
+    frames = vr.get_batch(indices)
+    if repeat_last and len(frames) < max_frames:
+        # pad by repeating the last frame if we couldn't get enough unique frames
+        last_frame = frames[-1]
+        frames = np.concatenate(
+            [frames, np.tile(last_frame, (max_frames - len(frames), 1, 1, 1))], axis=0
+        )
 
     # key metadata for logging/debugging
     metadata = dict(
@@ -150,6 +172,8 @@ def load_video_clip(
         clip_end_sec=timestamps[-1],
         shift_sec=shift_sec,
     )
+    if return_torch_tensor:
+        frames = torch.from_numpy(frames).permute(0, 3, 1, 2)
 
     return frames, metadata
 
