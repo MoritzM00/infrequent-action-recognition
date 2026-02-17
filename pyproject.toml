@@ -56,3 +56,33 @@ convention = "google"
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
+
+[tool.ty]
+# Incremental type checking - start with core inference code only
+
+[tool.ty.src]
+include = [
+    "src/falldet/inference/**/*.py",
+    "src/falldet/config.py",
+    "scripts/vllm_inference.py",
+]
+
+exclude = [
+    "src/falldet/data/**",
+    "src/falldet/evaluation/**",
+    "src/falldet/metrics/**",
+    "src/falldet/**/*wanfall*",
+    "src/falldet/**/*subgroup*",
+]
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.analysis]
+# Allow unresolved imports for third-party packages during initial setup
+respect-type-ignore-comments = true
+
+[tool.ty.terminal]
+# Don't fail on warnings initially - let developers see and fix gradually
+error-on-warning = false
+output-format = "concise"
