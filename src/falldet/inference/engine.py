@@ -10,20 +10,19 @@ parameters from Hydra configuration. It handles:
 """
 
 import logging
-from typing import TYPE_CHECKING
+from typing import Any
 
 import torch
+from vllm import LLM, SamplingParams
 
-from falldet.config import is_moe_model, resolve_model_path_from_config
+from falldet.config import is_moe_model
+from falldet.inference.mock_vllm import MockLLM
 from falldet.schemas import InferenceConfig
-
-if TYPE_CHECKING:  # vllm is heavy and conditionally imported at runtime
-    from vllm import LLM, SamplingParams
 
 logger = logging.getLogger(__name__)
 
 
-def create_llm_engine(config: InferenceConfig) -> "LLM":
+def create_llm_engine(config: InferenceConfig) -> LLM | MockLLM:
     """
     Create and initialize a vLLM engine (real or mock) based on config.
 
@@ -43,7 +42,7 @@ def create_llm_engine(config: InferenceConfig) -> "LLM":
         from vllm import LLM
 
     # Resolve checkpoint path from model config
-    checkpoint_path = resolve_model_path_from_config(config.model)
+    checkpoint_path = config.model.path
     logger.info(f"Loading model: {checkpoint_path}")
 
     # Auto-determine tensor_parallel_size (null -> use all GPUs)
@@ -76,8 +75,7 @@ def create_llm_engine(config: InferenceConfig) -> "LLM":
             f"Few-shot mode: {num_shots} exemplars, limit_mm_per_prompt={limit_mm_per_prompt}"
         )
 
-    # Build vLLM kwargs
-    vllm_kwargs = dict(
+    vllm_kwargs: dict[str, Any] = dict(
         model=checkpoint_path,
         tensor_parallel_size=tensor_parallel_size,
         mm_encoder_tp_mode=config.vllm.mm_encoder_tp_mode,
@@ -105,7 +103,7 @@ def create_llm_engine(config: InferenceConfig) -> "LLM":
     return LLM(**vllm_kwargs)
 
 
-def create_sampling_params(config: InferenceConfig) -> "SamplingParams":
+def create_sampling_params(config: InferenceConfig) -> SamplingParams:
     """
     Create sampling parameters based on config.
 
@@ -115,12 +113,6 @@ def create_sampling_params(config: InferenceConfig) -> "SamplingParams":
     Returns:
         SamplingParams instance (real or Mock)
     """
-    # Import real or mock SamplingParams based on configuration
-    if config.vllm.use_mock:
-        from falldet.inference.mock_vllm import MockSamplingParams as SamplingParams
-    else:
-        from vllm import SamplingParams
-
     return SamplingParams(
         temperature=config.sampling.temperature,
         max_tokens=config.sampling.max_tokens,

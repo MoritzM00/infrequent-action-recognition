@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "falldet"
 version = "0.0.1"
-description = "Infrequent Action Recognition using MLLMs"
+description = "Fall detection using multimodal large language models (MLLMs)"
 authors = [
     { name = "Moritz Mistol", email = "moritz.mistol@gmail.com" },
 ]
@@ -62,8 +62,7 @@ testpaths = ["tests"]
 
 [tool.ty.src]
 include = [
-    "src/falldet/inference/**/*.py",
-    "src/falldet/config.py",
+    "src",
     "scripts/vllm_inference.py",
 ]
 
@@ -73,6 +72,8 @@ exclude = [
     "src/falldet/metrics/**",
     "src/falldet/**/*wanfall*",
     "src/falldet/**/*subgroup*",
+    "src/falldet/utils/logging.py",
+    "src/falldet/utils/wandb.py",
 ]
 
 [tool.ty.environment]

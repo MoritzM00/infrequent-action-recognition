@@ -34,7 +34,7 @@ def evaluate_predictions(
     output_dir: str = "outputs",
     save_results: bool = True,
     run: wandb.Run | None = None,
-    log_videos: bool = True,
+    log_videos: int = 1,
 ) -> dict[str, Any]:
     """
     Evaluate predictions against ground truth labels.
