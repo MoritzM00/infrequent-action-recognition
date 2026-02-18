@@ -72,6 +72,14 @@ class TestModelConfig:
         assert cfg.active_params == "A3B"
         assert cfg.mm_processor_kwargs == {"do_resize": False}
 
+    def test_name_property(self):
+        cfg = ModelConfig(org="Qwen", family="Qwen", version="3", params="4B", variant="Instruct")
+        assert cfg.name == "Qwen3-VL-4B-Instruct"
+
+    def test_path_property(self):
+        cfg = ModelConfig(org="Qwen", family="Qwen", version="3", params="4B", variant="Instruct")
+        assert cfg.path == "Qwen/Qwen3-VL-4B-Instruct"
+
     def test_extra_fields_rejected(self):
         with pytest.raises(ValidationError):
             ModelConfig(org="X", family="X", version="1", params="1B", unknown="bad")

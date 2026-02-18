@@ -4,20 +4,43 @@ Validates the full config once after OmegaConf.resolve(), then passes typed
 objects to all downstream code. All YAML files and Hydra usage remain unchanged.
 """
 
-from __future__ import annotations
-
+from enum import StrEnum
 from typing import Any, Literal
 
+from omegaconf import DictConfig, OmegaConf
 from pydantic import BaseModel, ConfigDict, field_validator
 
-# Type aliases for prompt variant selection
-RoleVariant = Literal["standard", "specialized", "video_specialized"]
-TaskVariant = Literal["standard", "extended"]
-LabelsVariant = Literal["bulleted", "comma", "grouped", "numbered"]
-DefinitionsVariant = Literal["standard", "extended"]
+
+class BaseConfig(BaseModel):
+    """Base config that forbids extra fields. All sub-configs inherit from this."""
+
+    model_config = ConfigDict(extra="forbid")
 
 
-class PromptConfig(BaseModel):
+class RoleVariant(StrEnum):
+    STANDARD = "standard"
+    SPECIALIZED = "specialized"
+    VIDEO_SPECIALIZED = "video_specialized"
+
+
+class TaskVariant(StrEnum):
+    STANDARD = "standard"
+    EXTENDED = "extended"
+
+
+class LabelsVariant(StrEnum):
+    BULLETED = "bulleted"
+    COMMA = "comma"
+    GROUPED = "grouped"
+    NUMBERED = "numbered"
+
+
+class DefinitionsVariant(StrEnum):
+    STANDARD = "standard"
+    EXTENDED = "extended"
+
+
+class PromptConfig(BaseConfig):
     """Configuration for prompt building.
 
     Attributes:
@@ -36,8 +59,6 @@ class PromptConfig(BaseModel):
         definitions_variant: Which definitions component variant to use (None = omit definitions)
     """
 
-    model_config = ConfigDict(extra="forbid")
-
     output_format: Literal["json", "text"] = "json"
     cot: bool = False
     cot_start_tag: str = "<think>"
@@ -51,16 +72,14 @@ class PromptConfig(BaseModel):
     exemplar_seed: int = 42
 
     # Variant selectors
-    role_variant: RoleVariant | None = "standard"
-    task_variant: TaskVariant = "standard"
-    labels_variant: LabelsVariant = "bulleted"
+    role_variant: RoleVariant | None = RoleVariant.STANDARD
+    task_variant: TaskVariant = TaskVariant.STANDARD
+    labels_variant: LabelsVariant = LabelsVariant.BULLETED
     definitions_variant: DefinitionsVariant | None = None
 
 
-class VLLMConfig(BaseModel):
+class VLLMConfig(BaseConfig):
     """vLLM engine configuration."""
-
-    model_config = ConfigDict(extra="forbid")
 
     use_mock: bool = False
     tensor_parallel_size: int | None = None
@@ -77,14 +96,15 @@ class VLLMConfig(BaseModel):
     skip_mm_profiling: bool = False
     enable_prefix_caching: bool = False
     mm_processor_kwargs: dict[str, Any] = {}
-    limit_mm_per_prompt: dict[str, int] = {"image": 0, "video": 1}
+    limit_mm_per_prompt: dict[str, int] = {
+        "image": 0,
+        "video": 1,
+    }  # mutable default is safe with pydantic
     enable_expert_parallel: bool | None = None
 
 
-class ModelConfig(BaseModel):
+class ModelConfig(BaseConfig):
     """Model identification and loading configuration."""
-
-    model_config = ConfigDict(extra="forbid")
 
     org: str
     family: str
@@ -97,15 +117,27 @@ class ModelConfig(BaseModel):
 
     @field_validator("version", mode="before")
     @classmethod
-    def coerce_version_to_str(cls, v: Any) -> str:
+    def coerce_version_to_str(cls, v: str | int | float) -> str:
         """Coerce YAML integer versions (e.g. 3) to strings."""
         return str(v)
 
+    @property
+    def name(self) -> str:
+        """Resolve the model name (e.g. 'Qwen3-VL-4B-Instruct')."""
+        from falldet.config import resolve_model_name_from_config
 
-class SamplingConfig(BaseModel):
+        return resolve_model_name_from_config(self)
+
+    @property
+    def path(self) -> str:
+        """Resolve the full HuggingFace model path (e.g. 'Qwen/Qwen3-VL-4B-Instruct')."""
+        from falldet.config import resolve_model_path_from_config
+
+        return resolve_model_path_from_config(self)
+
+
+class SamplingConfig(BaseConfig):
     """Sampling / decoding configuration."""
-
-    model_config = ConfigDict(extra="forbid")
 
     temperature: float = 0.0
     max_tokens: int = 512
@@ -118,10 +150,8 @@ class SamplingConfig(BaseModel):
     stop_token_ids: list[int] | None = None
 
 
-class DataConfig(BaseModel):
+class DataConfig(BaseConfig):
     """Data loading configuration."""
-
-    model_config = ConfigDict(extra="forbid")
 
     seed: int = 0
     split: str = "cs"
@@ -130,10 +160,8 @@ class DataConfig(BaseModel):
     max_size: int | None = None
 
 
-class WandbConfig(BaseModel):
+class WandbConfig(BaseConfig):
     """Weights & Biases configuration."""
-
-    model_config = ConfigDict(extra="forbid")
 
     mode: Literal["online", "offline", "disabled"] = "online"
     project: str = "fall-detection-using-mllms"
@@ -141,10 +169,8 @@ class WandbConfig(BaseModel):
     tags: list[str] | None = None
 
 
-class VideoDatasetItemConfig(BaseModel):
+class VideoDatasetItemConfig(BaseConfig):
     """Per-dataset entry in the video_datasets list."""
-
-    model_config = ConfigDict(extra="forbid")
 
     name: str
     video_root: str
@@ -155,10 +181,8 @@ class VideoDatasetItemConfig(BaseModel):
     evaluation_group: str | None = None
 
 
-class DatasetConfig(BaseModel):
+class DatasetConfig(BaseConfig):
     """Top-level dataset group configuration."""
-
-    model_config = ConfigDict(extra="forbid")
 
     name: str
     video_datasets: list[VideoDatasetItemConfig]
@@ -170,10 +194,8 @@ class DatasetConfig(BaseModel):
     create_all_combined: bool = False
 
 
-class InferenceConfig(BaseModel):
+class InferenceConfig(BaseConfig):
     """Root configuration composing all sub-configs."""
-
-    model_config = ConfigDict(extra="forbid")
 
     # Sub-configs
     vllm: VLLMConfig
@@ -202,17 +224,18 @@ class InferenceConfig(BaseModel):
     dataset_test: DatasetConfig | None = None
 
 
-def from_dictconfig(cfg: Any) -> InferenceConfig:
-    """Convert a resolved OmegaConf DictConfig to a validated InferenceConfig.
+def from_dictconfig(cfg: DictConfig) -> InferenceConfig:
+    """Convert an OmegaConf DictConfig to a validated InferenceConfig.
+
+    Resolves all OmegaConf interpolations internally, so the caller does not
+    need to call OmegaConf.resolve() beforehand.
 
     Args:
-        cfg: Resolved OmegaConf DictConfig (after OmegaConf.resolve()).
+        cfg: OmegaConf DictConfig (resolved or unresolved).
 
     Returns:
         Validated InferenceConfig instance.
     """
-    from omegaconf import OmegaConf
-
     raw = OmegaConf.to_container(cfg, resolve=True)
     raw.pop("hydra", None)
     return InferenceConfig(**raw)

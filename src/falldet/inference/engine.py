@@ -67,11 +67,11 @@ def create_llm_engine(config: InferenceConfig) -> "LLM":
         enable_prefix_caching = config.vllm.enable_prefix_caching
         mm_processor_cache_gb = config.vllm.mm_processor_cache_gb
 
-    # Compute dynamic video limit based on num_shots
+    # Use schema default, but override video limit for few-shot
+    limit_mm_per_prompt = dict(config.vllm.limit_mm_per_prompt)
     num_shots = config.prompt.num_shots
-    video_limit = num_shots + 1
-    limit_mm_per_prompt = {"image": 0, "video": max(1, video_limit)}
     if num_shots > 0:
+        limit_mm_per_prompt["video"] = max(limit_mm_per_prompt.get("video", 1), num_shots + 1)
         logger.info(
             f"Few-shot mode: {num_shots} exemplars, limit_mm_per_prompt={limit_mm_per_prompt}"
         )

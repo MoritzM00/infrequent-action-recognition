@@ -58,7 +58,7 @@ def create_name_and_tags_from_config(config: InferenceConfig) -> tuple[str, list
     run_name = f"{base_name} {wandb.util.generate_id()}"
 
     # tags contain info about the experiment, dataset and model (highlevel)
-    tags = config.wandb.tags if config.wandb.tags else []
+    tags = list(config.wandb.tags) if config.wandb.tags else []
 
     # name is inside config.dataset.video_datasets[i].name
     for dataset_item in config.dataset.video_datasets:

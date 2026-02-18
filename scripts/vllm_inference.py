@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 from transformers import AutoProcessor
@@ -36,16 +36,9 @@ def main(cfg: DictConfig):
     Args:
         cfg: Hydra configuration containing:
     """
-    # Resolve all OmegaConf interpolations once at the beginning
-    OmegaConf.resolve(cfg)
-
-    logger.info("Configuration:")
-    logger.info(f"\n{OmegaConf.to_yaml(cfg)}")
-
-    # Convert to validated Pydantic config
     config = from_dictconfig(cfg)
+    logger.info(config.model_dump_json(indent=2))
 
-    # Initialize Weights & Biases
     run = initialize_run_from_config(config)
     reconfigure_logging_after_wandb(rich_handler, file_handler)
 
