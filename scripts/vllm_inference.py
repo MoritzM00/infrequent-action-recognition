@@ -4,7 +4,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import hydra
 from omegaconf import DictConfig
@@ -27,18 +27,7 @@ from falldet.utils.logging import reconfigure_logging_after_wandb, setup_logging
 from falldet.utils.predictions import save_predictions_jsonl
 from falldet.utils.wandb import initialize_run_from_config
 
-if TYPE_CHECKING:
-    from logging import FileHandler
-
-    from rich.console import Console
-    from rich.logging import RichHandler
-
 logger = logging.getLogger(__name__)
-
-# Module-level globals set in hydra_main, used in main
-console: "Console | None" = None
-rich_handler: "RichHandler | None" = None
-file_handler: "FileHandler | None" = None
 
 
 def main(cfg: DictConfig):
@@ -48,6 +37,11 @@ def main(cfg: DictConfig):
     Args:
         cfg: Hydra configuration containing:
     """
+    console, rich_handler, file_handler = setup_logging(
+        log_file="logs/local_logs.log",
+        console_level=logging.INFO,
+        file_level=logging.DEBUG,
+    )
     config = from_dictconfig(cfg)
     logger.info(config.model_dump_json(indent=2))
 
@@ -207,12 +201,6 @@ def main(cfg: DictConfig):
 @hydra.main(version_base=None, config_path="../config", config_name="inference_config")
 def hydra_main(cfg: DictConfig):
     """Hydra entry point for the inference script."""
-    global console, rich_handler, file_handler
-    console, rich_handler, file_handler = setup_logging(
-        log_file="logs/local_logs.log",
-        console_level=logging.INFO,
-        file_level=logging.DEBUG,
-    )
     try:
         main(cfg)
     except Exception as e:
