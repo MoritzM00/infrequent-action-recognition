@@ -86,4 +86,4 @@ respect-type-ignore-comments = true
 [tool.ty.terminal]
 # Don't fail on warnings initially - let developers see and fix gradually
 error-on-warning = false
-output-format = "concise"
+output-format = "full"
