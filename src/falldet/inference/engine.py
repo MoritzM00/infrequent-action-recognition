@@ -9,11 +9,15 @@ parameters from Hydra configuration. It handles:
 - Merging of model-specific overrides
 """
 
+from __future__ import annotations
+
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import torch
-from vllm import LLM, SamplingParams
+
+if TYPE_CHECKING:
+    from vllm import LLM, SamplingParams
 
 from falldet.config import is_moe_model
 from falldet.inference.mock_vllm import MockLLM
@@ -113,6 +117,8 @@ def create_sampling_params(config: InferenceConfig) -> SamplingParams:
     Returns:
         SamplingParams instance (real or Mock)
     """
+    from vllm import SamplingParams
+
     return SamplingParams(
         temperature=config.sampling.temperature,
         max_tokens=config.sampling.max_tokens,

@@ -8,12 +8,15 @@ rapid development and debugging of inference pipelines.
 Supports both JSON and text output formats with optional chain-of-thought reasoning.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import random
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from vllm import SamplingParams
+if TYPE_CHECKING:
+    from vllm import SamplingParams
 
 from falldet.data.video_dataset import label2idx
 
