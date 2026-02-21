@@ -10,7 +10,7 @@ from falldet.data.hf_utils import resolve_annotations_file, resolve_split_file
 
 logger = logging.getLogger(__name__)
 
-label2idx = {
+label2idx: dict[str, int] = {
     "walk": 0,
     "fall": 1,
     "fallen": 2,
