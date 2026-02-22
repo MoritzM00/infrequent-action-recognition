@@ -26,6 +26,7 @@ class RoleVariant(StrEnum):
 class TaskVariant(StrEnum):
     STANDARD = "standard"
     EXTENDED = "extended"
+    EMBED = "embed"
 
 
 class LabelsVariant(StrEnum):
@@ -59,7 +60,7 @@ class PromptConfig(BaseConfig):
         definitions_variant: Which definitions component variant to use (None = omit definitions)
     """
 
-    output_format: Literal["json", "text"] = "json"
+    output_format: Literal["json", "text", "none"] = "json"
     cot: bool = False
     cot_start_tag: str = "<think>"
     cot_end_tag: str = "</think>"
@@ -112,6 +113,7 @@ class ModelConfig(BaseConfig):
     variant: str | None = None
     params: str
     active_params: str | None = None
+    name_override: str | None = None
     needs_video_metadata: bool = True
     mm_processor_kwargs: dict[str, Any] = {}
 
@@ -249,6 +251,7 @@ class InferenceConfig(BaseConfig):
     wandb: WandbConfig
 
     # Root-level fields
+    task: Literal["classify", "embed"] = "classify"
     model_fps: float = 7.5
     num_frames: int = 16
     batch_size: int = 32

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import hydra
+import torch
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
@@ -22,12 +23,55 @@ from falldet.inference import (
     create_llm_engine,
     create_sampling_params,
 )
-from falldet.schemas import from_dictconfig
+from falldet.schemas import InferenceConfig, from_dictconfig
 from falldet.utils.logging import reconfigure_logging_after_wandb, setup_logging
 from falldet.utils.predictions import save_predictions_jsonl
 from falldet.utils.wandb import initialize_run_from_config
 
 logger = logging.getLogger(__name__)
+
+
+def _save_embeddings(
+    all_outputs: list,
+    all_samples: list,
+    config: InferenceConfig,
+    dataset_name: str,
+) -> Path:
+    """Extract embeddings from vLLM embed outputs and save as a .pt file.
+
+    Args:
+        all_outputs: List of embedding outputs from llm.embed()
+        config: Validated inference configuration
+        dataset_name: Name of the dataset being embedded
+
+    Returns:
+        Path to the saved .pt file
+    """
+    embeddings = torch.tensor([out.outputs.embedding for out in all_outputs])
+
+    output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # format model fps (i.e. 7.5) as 7_5, leave int as is
+    model_fps = (
+        str(config.model_fps).replace(".", "_")
+        if isinstance(config.model_fps, float)
+        else str(config.model_fps)
+    )
+
+    filename = f"{dataset_name}_{config.data.mode}_{config.num_frames}@{model_fps}.pt"
+    output_path = output_dir / filename
+
+    # save embeddings with metadata obj along with it
+    torch.save(
+        {
+            "embeddings": embeddings,
+            "samples": all_samples,
+        },
+        output_path,
+    )
+    logger.info(f"Saved embeddings to {output_path} (shape: {embeddings.shape})")
+    return output_path
 
 
 def main(cfg: DictConfig):
@@ -109,7 +153,12 @@ def main(cfg: DictConfig):
     llm = create_llm_engine(config)
     sampling_params = create_sampling_params(config)
 
-    logger.info("Generating predictions...")
+    is_embed = config.task == "embed"
+
+    if is_embed:
+        logger.info("Computing embeddings...")
+    else:
+        logger.info("Generating predictions...")
 
     # Process in batches
     all_outputs = []
@@ -126,7 +175,10 @@ def main(cfg: DictConfig):
             inputs = conversation_builder.build_vllm_inputs(sample["video"], processor)
             batch_inputs.append(inputs)
 
-        batch_outputs = llm.generate(batch_inputs, sampling_params=sampling_params)
+        if is_embed:
+            batch_outputs = llm.embed(batch_inputs)
+        else:
+            batch_outputs = llm.generate(batch_inputs, sampling_params=sampling_params)
         all_outputs.extend(batch_outputs)
         all_samples.extend(batch_samples)
 
@@ -134,7 +186,14 @@ def main(cfg: DictConfig):
     logger.info(f"Inference completed in {end - start:.2f} seconds")
     run.summary["inference_time_seconds"] = end - start
 
+    if is_embed:
+        _save_embeddings(all_outputs, all_samples, config, dataset_name)
+        logger.info(f"Logged results to W&B: {run.url}")
+        wandb.finish()
+        return
+
     # Parse outputs using the configured parser
+    assert parser is not None, "Parser must be set for classify task"
     predictions = []
     predicted_labels = []
     true_labels = []

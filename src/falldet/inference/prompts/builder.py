@@ -54,8 +54,9 @@ class PromptBuilder:
         if self.config.cot:
             sections.append(COT_INSTRUCTION)
 
-        # 6. Output format instruction
-        sections.append(OUTPUT_FORMAT_VARIANTS[self.config.output_format])
+        # 6. Output format instruction (skip for embed mode)
+        if self.config.output_format != "none":
+            sections.append(OUTPUT_FORMAT_VARIANTS[self.config.output_format])
 
         return "\n\n".join(sections)
 
@@ -81,12 +82,16 @@ class PromptBuilder:
         # Otherwise, use the default hardcoded labels component
         return LABELS_COMPONENT
 
-    def get_parser(self) -> OutputParser:
+    def get_parser(self) -> OutputParser | None:
         """Return the appropriate parser for this prompt's output format.
 
         Returns:
-            OutputParser instance matching the configured output format
+            OutputParser instance matching the configured output format,
+            or None when output_format is "none" (embed mode)
         """
+        if self.config.output_format == "none":
+            return None
+
         # Select base parser based on output format
         if self.config.output_format == "json":
             base_parser = JSONOutputParser(self.label2idx)

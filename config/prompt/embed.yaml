@@ -1,0 +1,14 @@
+output_format: none
+cot: false
+model_family: ${model.family}
+
+# Variant selectors
+role_variant: null          # no role preamble for embedding
+task_variant: embed         # embedding-specific task instruction
+labels_variant: bulleted    # include labels for semantic context
+definitions_variant: null   # no definitions needed
+
+# Few-shot settings (embedding is always zero-shot)
+num_shots: 0
+shot_selection: balanced
+exemplar_seed: 42

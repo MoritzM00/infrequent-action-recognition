@@ -35,6 +35,20 @@ REASON_TEMPLATES = [
 ]
 
 
+class MockEmbeddingOutput:
+    """Mock version of vLLM's EmbeddingOutput for embed task."""
+
+    def __init__(self, embedding: list[float]):
+        self.embedding = embedding
+
+
+class MockEmbeddingRequestOutput:
+    """Mock version of vLLM's EmbeddingRequestOutput."""
+
+    def __init__(self, outputs: MockEmbeddingOutput):
+        self.outputs = outputs
+
+
 class MockCompletionOutput:
     """Mock version of vLLM's CompletionOutput class."""
 
@@ -158,4 +172,24 @@ class MockLLM:
             request_output = MockRequestOutput(outputs=[completion_output])
             outputs.append(request_output)
 
+        return outputs
+
+    def embed(
+        self,
+        inputs: list[dict[str, Any]],
+    ) -> list[MockEmbeddingRequestOutput]:
+        """Generate mock embeddings for a batch of inputs.
+
+        Args:
+            inputs: List of input dictionaries (same format as vLLM expects)
+
+        Returns:
+            List of MockEmbeddingRequestOutput objects with random embeddings.
+        """
+        embed_dim = 128  # small mock embedding dimension
+        outputs = []
+        for _ in inputs:
+            embedding = [self.rng.gauss(0, 1) for _ in range(embed_dim)]
+            mock_output = MockEmbeddingOutput(embedding=embedding)
+            outputs.append(MockEmbeddingRequestOutput(outputs=mock_output))
         return outputs
