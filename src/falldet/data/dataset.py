@@ -99,6 +99,10 @@ class GenericVideoDataset(Dataset):
                 retries += 1
                 if retries >= self.max_retries:
                     logging.error(f"Error loading video at index {idx}: {str(e)}")
+                idx = random.randint(0, len(self) - 1)  # Randomly sample another video on failure
+                logger.warning(
+                    f"Retrying with a different video (attempt {retries}/{self.max_retries})"
+                )
 
         raise RuntimeError(f"Failed to load video at index {idx} after {self.max_retries} attempts")
 
@@ -213,13 +217,18 @@ class GenericVideoDataset(Dataset):
 
                 frame_rate = video_stream.average_rate  # Detect actual frame rate
 
-                fps = (
-                    float(frame_rate.numerator / frame_rate.denominator)
-                    if frame_rate
-                    else self.vid_fps
-                )
+                if frame_rate:
+                    fps = float(frame_rate.numerator / frame_rate.denominator)
+                elif self.data_fps is not None:
+                    fps = self.data_fps
+                else:
+                    raise ValueError(
+                        "Cannot determine fps: video has no average_rate and data_fps is None"
+                    )
 
-                target_interval = round(fps / self.target_fps)  # Calculate downsampling interval
+                target_interval = max(
+                    round(fps / self.target_fps), 1
+                )  # Calculate downsampling interval
 
                 frames = []
                 for i, frame in enumerate(container.decode(video_stream)):
@@ -230,6 +239,9 @@ class GenericVideoDataset(Dataset):
         except Exception as e:
             logging.error(f"Error reading video {video_path}: {e}")
             raise RuntimeError("Failed to process video")
+
+        if not frames:
+            raise RuntimeError(f"No frames decoded from video {video_path}")
 
         if self.vid_frame_count is None:
             # Load full video, no cycling required
@@ -245,7 +257,7 @@ class GenericVideoDataset(Dataset):
             frames = (frames * ((self.vid_frame_count // len(frames)) + 1))[: self.vid_frame_count]
         else:
             # Select a random consecutive sequence of frames
-            start_index = self.get_random_offset(len(frames), self.target_fps, idx, fps)
+            start_index = self.get_random_offset(len(frames), 1, idx, fps)
             frames = frames[start_index : start_index + self.vid_frame_count]
 
         return frames
