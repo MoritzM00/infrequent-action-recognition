@@ -49,7 +49,7 @@ class RandomSampler(ExemplarSampler):
 
     def sample(self) -> list[int]:
         """Randomly sample exemplar indices from train set."""
-        total_indices = list(range(len(self.corpus)))
+        total_indices = list(range(len(self.corpus)))  # ty:ignore[invalid-argument-type]
         sampled_indices = self.rng.choice(total_indices, size=self.num_shots, replace=False)
         return sampled_indices.tolist()
 
