@@ -12,6 +12,9 @@ Examples:
     # Run all Qwen models on cmdfall
     python scripts/run_oops_experiments.py --model qwenvl --dataset cmdfall
 
+    # Run on multiple datasets
+    python scripts/run_oops_experiments.py --model internvl --dataset cmdfall up-fall oops
+
     # Run both model families on up-fall
     python scripts/run_oops_experiments.py --model internvl qwenvl --dataset up-fall
 
@@ -53,7 +56,17 @@ QWEN_MOE: dict[str, str] = {
     # "235B": "A22B",
 }
 
-VIDEO_DATASETS = ["up-fall", "le2i", "cmdfall", "oops"]
+VIDEO_DATASETS = [
+    "up-fall",
+    "le2i",
+    "cmdfall",
+    "oops",
+    "gmdcsa24",
+    "edf",
+    "occu",
+    "caucafall",
+    "mcfd",
+]
 DEFAULT_DATASET = "oops"
 
 
@@ -143,7 +156,7 @@ def execute_runs(
     dry_run: bool = False,
     cooldown: int = 10,
     cot: bool = False,
-    dataset: str = DEFAULT_DATASET,
+    datasets: list[str] | None = None,
 ) -> None:
     """
     Execute all runs sequentially.
@@ -154,16 +167,20 @@ def execute_runs(
         dry_run: If True, only print commands without executing
         cooldown: Seconds to wait between runs
         cot: If True, run chain of thought experiments
-        dataset: Dataset name to run on
+        datasets: Dataset names to run on
     """
-    # Build list of (model, params) tuples
-    runs: list[tuple[str, str]] = []
+    if datasets is None:
+        datasets = [DEFAULT_DATASET]
+
+    # Build list of (model, params, dataset) tuples
+    runs: list[tuple[str, str, str]] = []
     for model in models:
         params_list = get_params_for_model(model)
         if sizes:
             params_list = [p for p in params_list if p in sizes]
         for params in params_list:
-            runs.append((model, params))
+            for dataset in datasets:
+                runs.append((model, params, dataset))
 
     if not runs:
         logging.error("No models to run! Check your --sizes filter.")
@@ -179,17 +196,20 @@ def execute_runs(
 
     prefix = "[DRY RUN] " if dry_run else ""
     experiment_type = "chain of thought" if cot else "zeroshot"
+    datasets_label = ", ".join(datasets)
     logging.info(
-        f"\n{prefix}Running {total_runs} {experiment_type} experiments on {dataset} dataset"
+        f"\n{prefix}Running {total_runs} {experiment_type} experiments on [{datasets_label}] datasets"
     )
     logging.info("=" * 60)
 
-    for idx, (model, params) in enumerate(runs, start=1):
+    for idx, (model, params, dataset) in enumerate(runs, start=1):
         command = generate_command(model, params, cot=cot, dataset=dataset)
 
         action = "Would run" if dry_run else "Running"
         moe_label = " (MoE)" if is_moe_model(model, params) else ""
-        logging.info(f"\n[{idx}/{total_runs}] {action} {model.upper()} {params}{moe_label}")
+        logging.info(
+            f"\n[{idx}/{total_runs}] {action} {model.upper()} {params}{moe_label} on {dataset}"
+        )
         logging.info(f"  Command: {command}")
 
         if dry_run:
@@ -259,9 +279,10 @@ Examples:
 
     parser.add_argument(
         "--dataset",
+        nargs="+",
         choices=VIDEO_DATASETS,
-        default=DEFAULT_DATASET,
-        help=f"Video dataset to run on (default: {DEFAULT_DATASET})",
+        default=[DEFAULT_DATASET],
+        help=f"Video dataset(s) to run on (default: {DEFAULT_DATASET})",
     )
 
     parser.add_argument(
@@ -309,7 +330,7 @@ def main() -> None:
         dry_run=args.dry_run,
         cooldown=args.cooldown,
         cot=args.cot,
-        dataset=args.dataset,
+        datasets=args.dataset,
     )
 
 
