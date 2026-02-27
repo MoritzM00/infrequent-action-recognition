@@ -110,14 +110,21 @@ class PromptBuilder:
         return base_parser
 
     def get_system_message(self) -> dict | None:
-        """Return system message dict for models that need it (e.g., InternVL CoT).
+        """Return system message dict if configured.
+
+        Priority: explicit system_instruction > InternVL R1 auto-detect > None.
 
         Returns:
             System message dict with role and content, or None if not needed
         """
-        if self._needs_r1_prefix():
-            return {
-                "role": "system",
-                "content": [{"type": "text", "text": R1_SYSTEM_PROMPT}],
-            }
-        return None
+        if self.config.system_instruction is not None:
+            text = self.config.system_instruction
+        elif self._needs_r1_prefix():
+            text = R1_SYSTEM_PROMPT
+        else:
+            return None
+
+        return {
+            "role": "system",
+            "content": [{"type": "text", "text": text}],
+        }

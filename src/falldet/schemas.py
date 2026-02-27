@@ -45,6 +45,9 @@ class PromptConfig(BaseConfig):
     """Configuration for prompt building.
 
     Attributes:
+        system_instruction: Free-form system message text. When set, returned as the system
+            message by get_system_message(). Takes priority over model-specific auto-detection
+            (e.g., InternVL R1). None means no explicit system instruction.
         output_format: Expected output format - "json" or "text"
         cot: Whether to enable chain-of-thought reasoning
         cot_start_tag: Opening tag for reasoning content (default: "<think>")
@@ -60,6 +63,7 @@ class PromptConfig(BaseConfig):
         definitions_variant: Which definitions component variant to use (None = omit definitions)
     """
 
+    system_instruction: str | None = None
     output_format: Literal["json", "text", "none"] = "json"
     cot: bool = False
     cot_start_tag: str = "<think>"

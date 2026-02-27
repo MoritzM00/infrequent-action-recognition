@@ -390,3 +390,40 @@ class TestConversationBuilder:
 
         assert builder._exemplars == []
         assert builder.num_videos == 1
+
+    def test_system_instruction_produces_system_message(self):
+        """Test that system_instruction adds a system message to the conversation."""
+        config = PromptConfig(
+            num_shots=0,
+            system_instruction="Represent the user's input",
+        )
+        builder = ConversationBuilder(config, LABEL2IDX, exemplars=[])
+        target_video = create_mock_video()
+
+        conv_data = builder.build(target_video)
+
+        # Should have: system + user = 2 messages
+        assert len(conv_data.messages) == 2
+        assert conv_data.messages[0]["role"] == "system"
+        assert conv_data.messages[0]["content"][0]["text"] == "Represent the user's input"
+        assert conv_data.messages[1]["role"] == "user"
+
+    def test_system_instruction_with_few_shot(self):
+        """Test that system_instruction works with few-shot exemplars."""
+        exemplars = create_mock_exemplars(1)
+        config = PromptConfig(
+            num_shots=1,
+            system_instruction="Custom system instruction",
+        )
+        builder = ConversationBuilder(config, LABEL2IDX, exemplars=exemplars)
+        target_video = create_mock_video()
+
+        conv_data = builder.build(target_video)
+
+        # Should have: system, user, assistant, user = 4 messages
+        assert len(conv_data.messages) == 4
+        assert conv_data.messages[0]["role"] == "system"
+        assert conv_data.messages[0]["content"][0]["text"] == "Custom system instruction"
+        assert conv_data.messages[1]["role"] == "user"
+        assert conv_data.messages[2]["role"] == "assistant"
+        assert conv_data.messages[3]["role"] == "user"
