@@ -7,7 +7,6 @@ actual exemplar dicts from the train dataset.
 
 import logging
 from abc import ABC, abstractmethod
-from pathlib import Path
 
 import numpy as np
 import torch
@@ -17,75 +16,6 @@ from torch.utils.data import Dataset
 from falldet.schemas import InferenceConfig
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Utilities
-# ---------------------------------------------------------------------------
-
-
-def load_embeddings(path: str | Path) -> tuple[torch.Tensor, list[dict]]:
-    """Load a .pt embeddings file.
-
-    Args:
-        path: Path to the .pt file with 'embeddings' and 'samples' keys.
-
-    Returns:
-        Tuple of (embeddings tensor [n, dim], list of sample metadata dicts).
-
-    Raises:
-        FileNotFoundError: If the embedding file does not exist.
-    """
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Embedding file not found: {path}. Run the embed task first to generate embeddings."
-        )
-    data = torch.load(path, map_location="cpu", weights_only=False)
-    embeddings: torch.Tensor = data["embeddings"]
-    samples: list[dict] = data["samples"]
-    logger.info(f"Loaded embeddings from {path}: shape={embeddings.shape}")
-    return embeddings, samples
-
-
-def get_embedding_filename(
-    dataset_name: str, mode: str, num_frames: int, model_fps: float | int
-) -> str:
-    """Derive the embedding filename from config parameters.
-
-    Matches the naming convention in ``_save_embeddings()`` in
-    ``vllm_inference.py``.  ``dataset_name`` should already include the
-    split suffix (e.g. ``"OOPS_cs"``).
-
-    Returns:
-        Filename like ``"OOPS_cs_train_16@7_5.pt"``.
-    """
-    fps_str = str(model_fps).replace(".", "_") if isinstance(model_fps, float) else str(model_fps)
-    return f"{dataset_name}_{mode}_{num_frames}@{fps_str}.pt"
-
-
-def retrieve_topk(
-    query_embeddings: torch.Tensor, corpus_embeddings: torch.Tensor, k: int = 10
-) -> list[dict]:
-    """Retrieve top-k results based on cosine similarity.
-
-    Args:
-        query_embeddings: Tensor of shape (num_queries, embedding_dim)
-        corpus_embeddings: Tensor of shape (num_corpus, embedding_dim)
-        k: Number of top results to retrieve per query
-    Returns:
-        List of dicts with 'ranked_indices' and 'ranked_scores' for each query.
-    """
-    similarity_scores = query_embeddings @ corpus_embeddings.T
-    results = []
-    for i in range(len(query_embeddings)):
-        scores = similarity_scores[i].cpu().float().numpy()
-        ranked_indices = np.argsort(scores)[::-1][:k]
-        ranked_scores = scores[ranked_indices]
-        results.append(
-            {"ranked_indices": ranked_indices.tolist(), "ranked_scores": ranked_scores.tolist()}
-        )
-    return results
 
 
 # ---------------------------------------------------------------------------
@@ -132,11 +62,10 @@ class RandomSampler(ExemplarSampler):
 
 
 class BalancedRandomSampler(ExemplarSampler):
-    """Distribution-proportional sampling – resamples on every call.
+    """Balanced sampling across classes – resamples on every call.
 
-    Allocates shots across classes proportional to each class's share
-    of the corpus (via multinomial draw), then samples uniformly within
-    each class.  Uses ``video_segments`` to read labels.
+    Distributes shots roughly equally across classes, using the
+    ``video_segments`` attribute of the corpus dataset to read labels.
     """
 
     def __init__(self, corpus: Dataset, num_shots: int = 5, seed: int = 0):
@@ -160,23 +89,23 @@ class BalancedRandomSampler(ExemplarSampler):
         return class_to_indices
 
     def sample(self, query_index: int) -> list[int]:
-        """Return freshly sampled indices proportional to class distribution."""
+        """Return freshly sampled balanced indices (``query_index`` ignored)."""
         class_to_indices = self._build_class_index()
         classes = sorted(class_to_indices.keys())
+        num_classes = len(classes)
         if not classes:
             return []
 
-        # Weights proportional to class size in the corpus
-        class_sizes = np.array([len(class_to_indices[cls]) for cls in classes])
-        weights = class_sizes / class_sizes.sum()
-
-        # Multinomial allocation of shots across classes
-        shots_per_class = self.rng.multinomial(self.num_shots, weights)
+        # Distribute shots as evenly as possible across classes
+        shots_per_class = {cls: self.num_shots // num_classes for cls in classes}
+        remainder = self.num_shots % num_classes
+        for cls in self.rng.choice(classes, remainder, replace=False):
+            shots_per_class[cls] += 1
 
         indices: list[int] = []
-        for cls, n_shots in zip(classes, shots_per_class):
-            available = class_to_indices[cls]
-            n = min(int(n_shots), len(available))
+        for cls, num_to_sample in shots_per_class.items():
+            available = class_to_indices.get(cls, [])
+            n = min(num_to_sample, len(available))
             if n > 0:
                 sampled = self.rng.choice(available, n, replace=False).tolist()
                 indices.extend(sampled)

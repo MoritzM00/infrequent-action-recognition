@@ -4,8 +4,6 @@ from falldet.inference.fewshot.samplers import (
     RandomSampler,
     SimilaritySampler,
     create_sampler,
-    get_embedding_filename,
-    load_embeddings,
 )
 
 __all__ = [
@@ -14,6 +12,4 @@ __all__ = [
     "BalancedRandomSampler",
     "SimilaritySampler",
     "create_sampler",
-    "load_embeddings",
-    "get_embedding_filename",
 ]

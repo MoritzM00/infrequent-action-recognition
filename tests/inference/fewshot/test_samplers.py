@@ -3,12 +3,11 @@
 import pytest
 import torch
 
+from falldet.embeddings import get_embedding_filename, load_embeddings
 from falldet.inference.fewshot.samplers import (
     BalancedRandomSampler,
     RandomSampler,
     SimilaritySampler,
-    get_embedding_filename,
-    load_embeddings,
 )
 
 # ---------------------------------------------------------------------------
