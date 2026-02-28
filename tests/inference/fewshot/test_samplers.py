@@ -103,25 +103,36 @@ class TestBalancedRandomSampler:
         assert len(indices) == 8
 
     def test_covers_multiple_classes(self):
+        """With equal class sizes and enough shots, all classes should appear."""
         ds = MockDataset(num_samples=40, num_classes=4)
-        sampler = BalancedRandomSampler(ds, num_shots=8, seed=0)
+        # Run many draws to ensure all classes are covered at least once
+        sampler = BalancedRandomSampler(ds, num_shots=20, seed=0)
         indices = sampler.sample(query_index=0)
 
         classes = {ds.video_segments[i]["label_str"] for i in indices}
         assert len(classes) == 4
 
-    def test_roughly_equal_distribution(self):
-        ds = MockDataset(num_samples=100, num_classes=4)
-        sampler = BalancedRandomSampler(ds, num_shots=8, seed=0)
-        indices = sampler.sample(query_index=0)
+    def test_proportional_distribution(self):
+        """Classes with more corpus samples should get more shots on average."""
+        # Imbalanced dataset: action_0 has 80 samples, action_1 has 20
+        num_samples = 100
+        labels = ["action_0"] * 80 + ["action_1"] * 20
+        ds = MockDataset(num_samples=num_samples, num_classes=2)
+        ds.labels = labels
+        ds.video_segments = [{"label_str": labels[i]} for i in range(num_samples)]
 
-        counts: dict[str, int] = {}
-        for i in indices:
-            label = ds.video_segments[i]["label_str"]
-            counts[label] = counts.get(label, 0) + 1
+        # Average over many draws
+        counts = {"action_0": 0, "action_1": 0}
+        num_trials = 200
+        sampler = BalancedRandomSampler(ds, num_shots=10, seed=42)
+        for trial in range(num_trials):
+            indices = sampler.sample(query_index=trial)
+            for i in indices:
+                counts[ds.video_segments[i]["label_str"]] += 1
 
-        for count in counts.values():
-            assert count == 2  # 8 / 4 classes
+        # action_0 (80%) should get ~4x more shots than action_1 (20%)
+        ratio = counts["action_0"] / counts["action_1"]
+        assert 2.5 < ratio < 6.0, f"Expected ratio ~4.0, got {ratio:.2f}"
 
     def test_resamples_each_call(self):
         ds = MockDataset(num_samples=100, num_classes=4)

@@ -132,10 +132,11 @@ class RandomSampler(ExemplarSampler):
 
 
 class BalancedRandomSampler(ExemplarSampler):
-    """Balanced sampling across classes – resamples on every call.
+    """Distribution-proportional sampling – resamples on every call.
 
-    Distributes shots roughly equally across classes, using the
-    ``video_segments`` attribute of the corpus dataset to read labels.
+    Allocates shots across classes proportional to each class's share
+    of the corpus (via multinomial draw), then samples uniformly within
+    each class.  Uses ``video_segments`` to read labels.
     """
 
     def __init__(self, corpus: Dataset, num_shots: int = 5, seed: int = 0):
@@ -159,23 +160,23 @@ class BalancedRandomSampler(ExemplarSampler):
         return class_to_indices
 
     def sample(self, query_index: int) -> list[int]:
-        """Return freshly sampled balanced indices (``query_index`` ignored)."""
+        """Return freshly sampled indices proportional to class distribution."""
         class_to_indices = self._build_class_index()
         classes = sorted(class_to_indices.keys())
-        num_classes = len(classes)
         if not classes:
             return []
 
-        # Distribute shots as evenly as possible across classes
-        shots_per_class = {cls: self.num_shots // num_classes for cls in classes}
-        remainder = self.num_shots % num_classes
-        for cls in self.rng.choice(classes, remainder, replace=False):
-            shots_per_class[cls] += 1
+        # Weights proportional to class size in the corpus
+        class_sizes = np.array([len(class_to_indices[cls]) for cls in classes])
+        weights = class_sizes / class_sizes.sum()
+
+        # Multinomial allocation of shots across classes
+        shots_per_class = self.rng.multinomial(self.num_shots, weights)
 
         indices: list[int] = []
-        for cls, num_to_sample in shots_per_class.items():
-            available = class_to_indices.get(cls, [])
-            n = min(num_to_sample, len(available))
+        for cls, n_shots in zip(classes, shots_per_class):
+            available = class_to_indices[cls]
+            n = min(int(n_shots), len(available))
             if n > 0:
                 sampled = self.rng.choice(available, n, replace=False).tolist()
                 indices.extend(sampled)
