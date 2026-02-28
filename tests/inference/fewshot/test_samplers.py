@@ -111,8 +111,8 @@ class TestBalancedRandomSampler:
         classes = {ds.video_segments[i]["label_str"] for i in indices}
         assert len(classes) == 4
 
-    def test_proportional_distribution(self):
-        """Classes with more corpus samples should get more shots on average."""
+    def test_even_distribution(self):
+        """Shots should be distributed roughly equally across classes."""
         # Imbalanced dataset: action_0 has 80 samples, action_1 has 20
         num_samples = 100
         labels = ["action_0"] * 80 + ["action_1"] * 20
@@ -129,9 +129,9 @@ class TestBalancedRandomSampler:
             for i in indices:
                 counts[ds.video_segments[i]["label_str"]] += 1
 
-        # action_0 (80%) should get ~4x more shots than action_1 (20%)
+        # With even distribution, each class should get ~5 shots per trial
         ratio = counts["action_0"] / counts["action_1"]
-        assert 2.5 < ratio < 6.0, f"Expected ratio ~4.0, got {ratio:.2f}"
+        assert 0.8 < ratio < 1.2, f"Expected ratio ~1.0, got {ratio:.2f}"
 
     def test_resamples_each_call(self):
         ds = MockDataset(num_samples=100, num_classes=4)
