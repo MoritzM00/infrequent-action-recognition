@@ -98,50 +98,10 @@ def main(cfg: DictConfig):
 
     # Set up per-query exemplar sampling if few-shot
     sampler = None
-    train_dataset = None
     if config.prompt.num_shots > 0:
-        from falldet.embeddings import get_embedding_filename, load_embeddings
-        from falldet.inference.fewshot.samplers import create_sampler
+        from falldet.inference.fewshot import setup_fewshot_sampler
 
-        # Load train dataset for exemplar video access
-        train_datasets = get_video_datasets(
-            config=config,
-            mode="train",
-            split=config.data.split,
-            size=config.data.size,
-            seed=config.data.seed,
-            return_individual=True,
-        )
-        train_datasets = cast(dict[str, Any], train_datasets)
-        train_dataset = list(train_datasets["individual"].values())[0]
-        logger.info(f"Train dataset loaded: {len(train_dataset)} samples for exemplar access")
-
-        # Load embeddings if needed for similarity-based retrieval
-        query_embeddings = None
-        corpus_embeddings = None
-        if config.prompt.shot_selection == "similarity":
-            emb_dir = Path(config.embeddings_dir)
-            train_emb_file = get_embedding_filename(
-                dataset_name, "train", config.num_frames, config.model_fps
-            )
-            query_emb_file = get_embedding_filename(
-                dataset_name, config.data.mode, config.num_frames, config.model_fps
-            )
-            corpus_embeddings, _ = load_embeddings(emb_dir / train_emb_file)
-            query_embeddings, _ = load_embeddings(emb_dir / query_emb_file)
-
-            # Slice query embeddings to match num_samples Subset
-            if config.num_samples is not None:
-                n = min(config.num_samples, len(query_embeddings))
-                query_embeddings = query_embeddings[:n]
-                logger.info(f"Sliced query embeddings to {n} (num_samples={config.num_samples})")
-
-        sampler = create_sampler(
-            config,
-            train_dataset,
-            query_embeddings=query_embeddings,
-            corpus_embeddings=corpus_embeddings,
-        )
+        sampler = setup_fewshot_sampler(config, dataset_name)
 
     logger.info(
         f"Mode: {config.prompt.num_shots}-shot ({conversation_builder.num_videos} videos/request)"
@@ -177,10 +137,7 @@ def main(cfg: DictConfig):
             batch_samples.append(metadata)
 
             # Sample exemplars per query (None for zero-shot)
-            exemplars = None
-            if sampler is not None and train_dataset is not None:
-                indices = sampler.sample(global_sample_idx)
-                exemplars = [train_dataset[i] for i in indices]
+            exemplars = sampler.get_exemplars(global_sample_idx) if sampler else None
 
             inputs = conversation_builder.build_vllm_inputs(
                 sample["video"], processor, exemplars=exemplars

@@ -1,8 +1,8 @@
 """Per-query exemplar sampling for few-shot inference.
 
 All samplers implement the same interface: sample(query_index) -> list[int],
-returning corpus indices for the given query. The inference loop loads the
-actual exemplar dicts from the train dataset.
+returning corpus indices for the given query. The convenience method
+get_exemplars(query_index) loads the actual exemplar dicts from the corpus.
 """
 
 import logging
@@ -27,8 +27,8 @@ class ExemplarSampler(ABC):
     """Base class for per-query exemplar samplers.
 
     Every sampler holds a reference to the corpus (train) dataset and
-    returns **indices** into it.  The inference loop is responsible for
-    loading the actual exemplar dicts via ``corpus[idx]``.
+    returns **indices** into it.  Use ``get_exemplars(query_index)`` to
+    get the actual exemplar dicts directly.
     """
 
     def __init__(self, corpus: Dataset, num_shots: int = 5, seed: int = 0):
@@ -41,6 +41,11 @@ class ExemplarSampler(ABC):
     @abstractmethod
     def sample(self, query_index: int) -> list[int]:
         """Return corpus indices for the given query."""
+
+    def get_exemplars(self, query_index: int) -> list[dict]:
+        """Sample indices and return the corresponding corpus items."""
+        indices = self.sample(query_index)
+        return [self.corpus[i] for i in indices]
 
 
 # ---------------------------------------------------------------------------
@@ -215,3 +220,72 @@ def create_sampler(
         )
 
     return sampler_cls(corpus=corpus, num_shots=num_shots, seed=seed)
+
+
+# ---------------------------------------------------------------------------
+# High-level setup helper
+# ---------------------------------------------------------------------------
+
+
+def setup_fewshot_sampler(
+    config: InferenceConfig,
+    dataset_name: str,
+) -> ExemplarSampler:
+    """Load train data, embeddings, and create the exemplar sampler.
+
+    Encapsulates the full few-shot setup so callers only need a single call.
+
+    Args:
+        config: Inference configuration (must have ``num_shots > 0``).
+        dataset_name: Name of the dataset (including split suffix).
+
+    Returns:
+        A ready-to-use ``ExemplarSampler`` whose ``corpus`` is the train dataset.
+    """
+    from typing import cast
+
+    from falldet.data.video_dataset_factory import get_video_datasets
+
+    # Load train dataset for exemplar video access
+    train_datasets = get_video_datasets(
+        config=config,
+        mode="train",
+        split=config.data.split,
+        size=config.data.size,
+        seed=config.data.seed,
+        return_individual=True,
+    )
+    train_datasets = cast(dict[str, object], train_datasets)
+    train_dataset = list(train_datasets["individual"].values())[0]  # type: ignore[union-attr]
+    logger.info(f"Train dataset loaded: {len(train_dataset)} samples for exemplar access")  # type: ignore[arg-type]
+
+    # Load embeddings if needed for similarity-based retrieval
+    query_embeddings: torch.Tensor | None = None
+    corpus_embeddings: torch.Tensor | None = None
+    if config.prompt.shot_selection == "similarity":
+        from pathlib import Path
+
+        from falldet.embeddings import get_embedding_filename, load_embeddings
+
+        emb_dir = Path(config.embeddings_dir)
+        train_emb_file = get_embedding_filename(
+            dataset_name, "train", config.num_frames, config.model_fps
+        )
+        query_emb_file = get_embedding_filename(
+            dataset_name, config.data.mode, config.num_frames, config.model_fps
+        )
+        corpus_embeddings, _ = load_embeddings(emb_dir / train_emb_file)
+        query_embeddings, _ = load_embeddings(emb_dir / query_emb_file)
+
+        # Slice query embeddings to match num_samples Subset
+        if config.num_samples is not None:
+            n = min(config.num_samples, len(query_embeddings))
+            query_embeddings = query_embeddings[:n]
+            logger.info(f"Sliced query embeddings to {n} (num_samples={config.num_samples})")
+
+    return create_sampler(
+        config,
+        train_dataset,
+        query_embeddings=query_embeddings,
+        corpus_embeddings=corpus_embeddings,
+    )

@@ -36,6 +36,36 @@ class MockDataset:
 
 
 # ---------------------------------------------------------------------------
+# ExemplarSampler.get_exemplars
+# ---------------------------------------------------------------------------
+
+
+class TestGetExemplars:
+    def test_returns_correct_count_and_keys(self):
+        ds = MockDataset(num_samples=20)
+        sampler = RandomSampler(ds, num_shots=5, seed=0)
+        exemplars = sampler.get_exemplars(query_index=0)
+
+        assert len(exemplars) == 5
+        for ex in exemplars:
+            assert isinstance(ex, dict)
+            assert "video" in ex
+            assert "label_str" in ex
+
+    def test_matches_sample_indices(self):
+        ds = MockDataset(num_samples=20)
+        sampler = RandomSampler(ds, num_shots=3, seed=42)
+
+        # get_exemplars should return the same items as manual indexing
+        indices = sampler.sample(query_index=0)
+        sampler2 = RandomSampler(ds, num_shots=3, seed=42)
+        exemplars = sampler2.get_exemplars(query_index=0)
+
+        for idx, ex in zip(indices, exemplars):
+            assert ex["idx"] == ds[idx]["idx"]
+
+
+# ---------------------------------------------------------------------------
 # RandomSampler
 # ---------------------------------------------------------------------------
 
