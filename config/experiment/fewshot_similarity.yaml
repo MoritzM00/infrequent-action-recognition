@@ -7,6 +7,9 @@ defaults:
 # Full dataset evaluation
 num_samples: null
 
+model:
+  params: 8B
+
 # Similarity-based exemplar selection
 prompt:
   shot_selection: similarity
