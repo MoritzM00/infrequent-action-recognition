@@ -7,6 +7,7 @@ get_exemplars(query_index) loads the actual exemplar dicts from the corpus.
 
 import logging
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import torch
@@ -45,7 +46,32 @@ class ExemplarSampler(ABC):
     def get_exemplars(self, query_index: int) -> list[dict]:
         """Sample indices and return the corresponding corpus items."""
         indices = self.sample(query_index)
-        return [self.corpus[i] for i in indices]
+        with ThreadPoolExecutor(max_workers=len(indices)) as executor:
+            return list(executor.map(self.corpus.__getitem__, indices))
+
+    def get_batch_exemplars(self, query_indices: list[int]) -> list[list[dict]]:
+        """Load exemplars for multiple queries in a single thread pool.
+
+        Instead of calling ``get_exemplars`` sequentially for each query,
+        this flattens all corpus loads into one pool so I/O overlaps across
+        the entire batch.
+        """
+        all_indices = [self.sample(q) for q in query_indices]
+
+        # Flatten into (corpus_index, batch_pos, shot_pos) for parallel loading
+        flat_keys: list[tuple[int, int, int]] = []
+        for batch_pos, indices in enumerate(all_indices):
+            for shot_pos, idx in enumerate(indices):
+                flat_keys.append((idx, batch_pos, shot_pos))
+
+        with ThreadPoolExecutor(max_workers=len(flat_keys)) as executor:
+            flat_items = list(executor.map(self.corpus.__getitem__, [k[0] for k in flat_keys]))
+
+        # Reassemble into list[list[dict]] preserving order
+        result: list[list[dict]] = [[] for _ in query_indices]
+        for (_, batch_pos, _), item in zip(flat_keys, flat_items):
+            result[batch_pos].append(item)
+        return result
 
 
 # ---------------------------------------------------------------------------
@@ -142,6 +168,10 @@ class SimilaritySampler(ExemplarSampler):
             )
         assert len(corpus) == corpus_embeddings.shape[0], (  # type: ignore[arg-type]
             "Corpus embeddings must match corpus size."
+        )
+        assert query_embeddings.shape[1] == corpus_embeddings.shape[1], (
+            f"Query and corpus embeddings must have the same dimension, but got "
+            f"query dim {query_embeddings.shape[1]} and corpus dim {corpus_embeddings.shape[1]}."
         )
 
         # L2-normalise for cosine similarity

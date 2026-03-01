@@ -132,12 +132,16 @@ def main(cfg: DictConfig):
     for batch in tqdm(dataloader, desc="Processing batches"):
         batch_inputs = []
         batch_samples = []
-        for sample in batch:
+
+        # Load all exemplars for the batch in parallel
+        batch_indices = list(range(global_sample_idx, global_sample_idx + len(batch)))
+        all_exemplars = (
+            sampler.get_batch_exemplars(batch_indices) if sampler else [None] * len(batch)
+        )
+
+        for sample, exemplars in zip(batch, all_exemplars):
             metadata = {k: v for k, v in sample.items() if k != "video"}
             batch_samples.append(metadata)
-
-            # Sample exemplars per query (None for zero-shot)
-            exemplars = sampler.get_exemplars(global_sample_idx) if sampler else None
 
             inputs = conversation_builder.build_vllm_inputs(
                 sample["video"], processor, exemplars=exemplars
